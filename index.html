@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Habit Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  /* ===== CSS VARIABLES ===== */
+  :root {
+    --bg: #1c1c1e;
+    --card: #2c2c2e;
+    --card2: #3a3a3c;
+    --text: #ffffff;
+    --text2: #aeaeb2;
+    --text3: #636366;
+    --accent: #f5a623;
+    --green: #30d158;
+    --red: #ff453a;
+    --border: #38383a;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%; width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* ===== APP SHELL ===== */
+  #app {
+    display: flex; flex-direction: column;
+    height: 100%; max-width: 430px;
+    margin: 0 auto; position: relative;
+  }
+
+  /* ===== PAGES ===== */
+  .page { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .page.active { display: flex; }
+
+  /* ===== SCROLLABLE CONTENT ===== */
+  .scroll-area {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 20px;
+  }
+  .scroll-area::-webkit-scrollbar { display: none; }
+
+  /* ===== TOP BAR ===== */
+  .top-bar {
+    padding: calc(var(--safe-top) + 12px) 16px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 10;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .top-bar h1 {
+    font-size: 17px; font-weight: 600;
+    color: var(--accent); letter-spacing: -0.3px;
+  }
+
+  .icon-btn {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border: none; background: none; color: var(--accent);
+    cursor: pointer; border-radius: 50%;
+    transition: background 0.15s;
+    font-size: 22px; font-weight: 300;
+  }
+  .icon-btn:active { background: var(--card); }
+
+  /* ===== WEEK NAVIGATOR ===== */
+  .week-nav {
+    display: flex; align-items: center; justify-content: center;
+    gap: 16px; padding: 10px 16px 6px;
+  }
+  .week-nav button {
+    background: none; border: none; color: var(--accent);
+    font-size: 20px; cursor: pointer; padding: 4px 10px;
+    border-radius: 8px; transition: background 0.15s;
+  }
+  .week-nav button:active { background: var(--card); }
+  .week-label {
+    font-size: 15px; font-weight: 600; color: var(--accent);
+    min-width: 120px; text-align: center;
+  }
+
+  /* ===== FILTER BAR ===== */
+  .filter-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 16px 10px;
+  }
+  .filter-tag {
+    background: var(--card); border-radius: 10px;
+    padding: 6px 14px; font-size: 13px; color: var(--text2);
+    cursor: pointer; transition: background 0.15s;
+    border: none; user-select: none;
+  }
+  .filter-tag.active { background: var(--accent); color: #000; font-weight: 600; }
+  .today-btn {
+    background: var(--card2); border-radius: 10px;
+    padding: 6px 14px; font-size: 13px; color: var(--text2);
+    border: none; cursor: pointer; transition: background 0.15s;
+    display: flex; flex-direction: column; align-items: center; line-height: 1.1;
+  }
+  .today-btn .day-num { font-size: 16px; font-weight: 700; color: var(--text); }
+  .today-btn .day-lbl { font-size: 10px; color: var(--text3); }
+  .today-btn:active { background: var(--card2); opacity: 0.7; }
+
+  /* ===== DAY HEADER ROW ===== */
+  .day-header {
+    display: grid; grid-template-columns: 1fr 36px repeat(7, 1fr);
+    padding: 0 16px; margin-bottom: 4px;
+    gap: 3px;
+  }
+  .day-header span {
+    text-align: center; font-size: 11px; color: var(--text3);
+    font-weight: 500;
+  }
+  .day-header span.today-col { color: var(--accent); font-weight: 700; }
+
+  /* ===== HABIT CARD ===== */
+  .habit-list { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+
+  .habit-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 12px 12px 10px;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .habit-card:active { transform: scale(0.985); }
+
+  .habit-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .habit-name {
+    font-size: 15px; font-weight: 600; color: var(--text);
+    flex: 1; margin-right: 8px;
+    line-height: 1.2;
+  }
+  .habit-tag {
+    font-size: 10px; color: var(--text3); margin-top: 2px;
+  }
+
+  /* ===== STREAK BADGE ===== */
+  .streak-badge {
+    display: flex; align-items: center;
+    background: var(--card2); border-radius: 20px;
+    padding: 4px 10px; gap: 4px; min-width: 50px;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .streak-badge.green { background: var(--green); }
+  .streak-badge.red { background: var(--red); }
+  .streak-num { font-size: 15px; font-weight: 700; color: var(--text); }
+  .streak-max { font-size: 13px; color: rgba(255,255,255,0.55); }
+
+  /* ===== DAY GRID ===== */
+  .day-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+  }
+  .day-cell {
+    height: 32px; border-radius: 6px;
+    background: var(--card2);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none; -webkit-user-select: none;
+    position: relative;
+  }
+  .day-cell.done { background: var(--green); }
+  .day-cell.missed { background: var(--red); }
+  .day-cell.future { opacity: 0.3; cursor: default; }
+  .day-cell.today { box-shadow: 0 0 0 2px var(--accent); }
+  .day-cell:active:not(.future) { transform: scale(0.9); }
+  .day-cell .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255,255,255,0.4);
+  }
+  .day-cell.done .dot { background: rgba(255,255,255,0.8); }
+  .day-cell.missed .dot { background: rgba(255,255,255,0.6); }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    text-align: center; padding: 60px 32px;
+    color: var(--text3);
+  }
+  .empty-state .emoji { font-size: 48px; margin-bottom: 16px; }
+  .empty-state h3 { font-size: 18px; color: var(--text2); margin-bottom: 8px; }
+  .empty-state p { font-size: 14px; line-height: 1.5; }
+
+  /* ===== BOTTOM NAV ===== */
+  .bottom-nav {
+    display: flex; align-items: flex-start; justify-content: space-around;
+    padding: 10px 0 calc(var(--safe-bottom) + 10px);
+    background: var(--card);
+    border-top: 0.5px solid var(--border);
+    flex-shrink: 0;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; cursor: pointer; padding: 0 16px;
+    min-width: 44px; min-height: 44px; justify-content: center;
+    border: none; background: none;
+    color: var(--text3); transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav-item.active { color: var(--accent); }
+  .nav-item svg { width: 24px; height: 24px; }
+  .nav-label { font-size: 10px; font-weight: 500; }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    display: none; align-items: flex-end;
+    animation: fadeIn 0.2s ease;
+  }
+  .modal-overlay.open { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal {
+    background: var(--card);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 20px calc(var(--safe-bottom) + 20px);
+    width: 100%; max-height: 85vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+  .modal h2 {
+    font-size: 18px; font-weight: 700; margin-bottom: 20px;
+    text-align: center; color: var(--text);
+  }
+
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--text3); border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block; font-size: 12px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 6px; font-weight: 600;
+  }
+  .form-group input, .form-group textarea, .form-group select {
+    width: 100%; background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+    color: var(--text); font-size: 16px;
+    outline: none; font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group textarea:focus {
+    border-color: var(--accent);
+  }
+
+  /* ===== TAGS GRID ===== */
+  .tags-grid {
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .tag-option {
+    padding: 8px 14px; border-radius: 10px;
+    background: var(--card2); color: var(--text2);
+    font-size: 13px; cursor: pointer; border: none;
+    transition: all 0.15s; user-select: none;
+  }
+  .tag-option.selected { background: var(--accent); color: #000; font-weight: 600; }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    width: 100%; padding: 14px;
+    border-radius: 12px; border: none;
+    font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s;
+    font-family: inherit;
+  }
+  .btn:active { opacity: 0.8; }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-danger { background: var(--red); color: #fff; margin-top: 8px; }
+  .btn-ghost {
+    background: var(--card2); color: var(--text2);
+    margin-top: 8px;
+  }
+
+  /* ===== TREND PAGE ===== */
+  .trend-section { padding: 16px; }
+  .trend-card {
+    background: var(--card);
+    border-radius: 16px; padding: 16px;
+    margin-bottom: 14px;
+  }
+  .trend-card h3 {
+    font-size: 14px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 14px; font-weight: 600;
+  }
+  .chart-container { position: relative; height: 200px; }
+  .pie-container { position: relative; height: 220px; }
+
+  /* ===== STATS ROW ===== */
+  .stats-row {
+    display: flex; gap: 10px; margin-bottom: 14px;
+  }
+  .stat-card {
+    flex: 1; background: var(--card);
+    border-radius: 14px; padding: 14px 10px;
+    text-align: center;
+  }
+  .stat-num { font-size: 28px; font-weight: 700; color: var(--text); }
+  .stat-num.green { color: var(--green); }
+  .stat-num.red { color: var(--red); }
+  .stat-num.accent { color: var(--accent); }
+  .stat-lbl { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* ===== SETUP PAGE ===== */
+  .setup-section { padding: 16px; }
+  .setup-group {
+    background: var(--card);
+    border-radius: 16px; overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .setup-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 0.5px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .setup-row:last-child { border-bottom: none; }
+  .setup-row:active { background: var(--card2); }
+  .setup-row-label { font-size: 15px; color: var(--text); }
+  .setup-row-value { font-size: 15px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+  .setup-row-value svg { width: 16px; height: 16px; color: var(--text3); }
+
+  /* ===== TOGGLE ===== */
+  .toggle {
+    width: 51px; height: 31px;
+    background: var(--text3); border-radius: 15.5px;
+    position: relative; cursor: pointer;
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: ''; position: absolute;
+    width: 27px; height: 27px;
+    background: white; border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .toggle.on::after { transform: translateX(20px); }
+
+  /* ===== GIST SECTION ===== */
+  .gist-status {
+    font-size: 12px; padding: 8px 12px;
+    border-radius: 8px; margin-top: 8px;
+    display: none;
+  }
+  .gist-status.ok { background: rgba(48,209,88,0.15); color: var(--green); display: block; }
+  .gist-status.err { background: rgba(255,69,58,0.15); color: var(--red); display: block; }
+  .gist-status.loading { background: rgba(245,166,35,0.15); color: var(--accent); display: block; }
+
+  /* ===== NOTES PAGE ===== */
+  .notes-section { padding: 16px; }
+  .note-card {
+    background: var(--card); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .note-date { font-size: 12px; color: var(--text3); margin-bottom: 6px; }
+  .note-text { font-size: 14px; color: var(--text); line-height: 1.5; }
+  .note-textarea {
+    width: 100%; background: var(--card2);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; color: var(--text);
+    font-size: 15px; resize: none; height: 100px;
+    outline: none; font-family: inherit;
+    margin-bottom: 10px;
+  }
+
+  /* ===== LONG PRESS CONTEXT MENU ===== */
+  .context-menu {
+    position: fixed; z-index: 200;
+    background: var(--card2);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    overflow: hidden; display: none;
+    min-width: 180px;
+  }
+  .context-menu.open { display: block; }
+  .context-item {
+    padding: 13px 16px; font-size: 15px;
+    color: var(--text); cursor: pointer;
+    border-bottom: 0.5px solid var(--border);
+    transition: background 0.15s;
+  }
+  .context-item:last-child { border-bottom: none; }
+  .context-item:active { background: var(--card); }
+  .context-item.danger { color: var(--red); }
+
+  /* ===== SWIPE HINT ===== */
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .sync-indicator {
+    font-size: 11px; color: var(--text3);
+    text-align: center; padding: 4px;
+  }
+  .sync-indicator.syncing { color: var(--accent); animation: pulse 1s infinite; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== PAGE: JOURNALS ===== -->
+  <div class="page active" id="page-journals">
+    <div class="top-bar">
+      <button class="icon-btn" id="btn-menu" onclick="openJournalList()">☰</button>
+      <h1 id="week-title">Эта неделя</h1>
+      <button class="icon-btn" id="btn-add" onclick="openAddHabit()">+</button>
+    </div>
+
+    <div class="week-nav">
+      <button onclick="changeWeek(-1)">‹</button>
+      <span class="week-label" id="week-range">—</span>
+      <button onclick="changeWeek(1)">›</button>
+    </div>
+
+    <div class="filter-bar">
+      <div style="display:flex;gap:6px;">
+        <button class="filter-tag active" id="filter-all" onclick="setFilter('all',this)">Все</button>
+        <button class="filter-tag" id="filter-ex" onclick="setFilter('Exercising',this)">Спорт</button>
+      </div>
+      <button class="today-btn" onclick="goToday()">
+        <span class="day-num" id="today-num">—</span>
+        <span class="day-lbl">Сегодня</span>
+      </button>
+    </div>
+
+    <div class="day-header" id="day-header">
+      <span></span><span></span>
+      <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+    </div>
+
+    <div class="scroll-area">
+      <div class="habit-list" id="habit-list"></div>
+      <div class="sync-indicator" id="sync-indicator"></div>
+    </div>
+  </div>
+
+  <!-- ===== PAGE: TREND ===== -->
+  <div class="page" id="page-trend">
+    <div class="top-bar">
+      <h1>Тренды</h1>
+    </div>
+    <div class="scroll-area">
+      <div class="trend-section">
+        <div class="stats-row" id="stats-row"></div>
+        <div class="trend-card">
+          <h3>📊 Активность по месяцам</h3>
+          <div class="chart-container">
+            <canvas id="barChart"></canvas>
+          </div>
+        </div>
+        <div class="trend-card">
+          <h3>🥧 Общий результат</h3>
+          <div class="pie-container">
+            <canvas id="pieChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PAGE: NOTES ===== -->
+  <div class="page" id="page-notes">
+    <div class="top-bar">
+      <h1>Заметки</h1>
+      <button class="icon-btn" onclick="openAddNote()">+</button>
+    </div>
+    <div class="scroll-area">
+      <div class="notes-section" id="notes-list"></div>
+    </div>
+  </div>
+
+  <!-- ===== PAGE: SETUP ===== -->
+  <div class="page" id="page-setup">
+    <div class="top-bar">
+      <h1>Настройки</h1>
+    </div>
+    <div class="scroll-area">
+      <div class="setup-section">
+
+        <div class="setup-group">
+          <div class="setup-row" onclick="toggleSetting('sound')">
+            <span class="setup-row-label">🔊 Звуковые эффекты</span>
+            <div class="toggle" id="toggle-sound"></div>
+          </div>
+          <div class="setup-row" onclick="toggleSetting('chains')">
+            <span class="setup-row-label">⛓ Цепочки (стрики)</span>
+            <div class="toggle" id="toggle-chains"></div>
+          </div>
+        </div>
+
+        <div class="setup-group">
+          <div class="setup-row">
+            <span class="setup-row-label">📅 Первый день недели</span>
+            <span class="setup-row-value">Понедельник</span>
+          </div>
+          <div class="setup-row">
+            <span class="setup-row-label">🌍 Язык</span>
+            <span class="setup-row-value">Русский</span>
+          </div>
+        </div>
+
+        <!-- GitHub Gist Integration -->
+        <div class="setup-group">
+          <div style="padding:14px 16px;">
+            <div style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:12px;">
+              ☁️ GitHub Gist (Синхронизация)
+            </div>
+            <p style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.5;">
+              Создайте <b style="color:var(--text2)">Personal Access Token</b> на github.com → Settings → Developer Settings → Tokens (classic) с правом <b style="color:var(--text2)">gist</b>. Затем нажмите «Создать Gist» или вставьте ID существующего.
+            </p>
+            <div class="form-group">
+              <label>GitHub Token</label>
+              <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Gist ID (оставьте пустым для создания нового)</label>
+              <input type="text" id="gh-gist-id" placeholder="abc123def456...">
+            </div>
+            <button class="btn btn-primary" onclick="saveGistSettings()" style="margin-bottom:8px;">💾 Сохранить и подключить</button>
+            <button class="btn btn-ghost" onclick="syncToGist()">🔄 Синхронизировать сейчас</button>
+            <div class="gist-status" id="gist-status"></div>
+          </div>
+        </div>
+
+        <div class="setup-group">
+          <div class="setup-row" onclick="exportData()">
+            <span class="setup-row-label">📤 Экспорт данных (JSON)</span>
+            <span class="setup-row-value">›</span>
+          </div>
+          <div class="setup-row" onclick="importData()">
+            <span class="setup-row-label">📥 Импорт данных</span>
+            <span class="setup-row-value">›</span>
+          </div>
+          <div class="setup-row" onclick="clearAllData()">
+            <span class="setup-row-label" style="color:var(--red)">🗑 Очистить все данные</span>
+            <span class="setup-row-value">›</span>
+          </div>
+        </div>
+
+        <div style="padding:16px;text-align:center;">
+          <p style="font-size:12px;color:var(--text3);">Habit Tracker v1.0 • Powered by Claude AI</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BOTTOM NAV ===== -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-journals" onclick="switchPage('journals')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>
+      </svg>
+      <span class="nav-label">Журнал</span>
+    </button>
+    <button class="nav-item" id="nav-trend" onclick="switchPage('trend')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+      <span class="nav-label">Тренды</span>
+    </button>
+    <button class="nav-item" id="nav-notes" onclick="switchPage('notes')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <span class="nav-label">Заметки</span>
+    </button>
+    <button class="nav-item" id="nav-setup" onclick="switchPage('setup')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      <span class="nav-label">Настройки</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ===== MODAL: ADD/EDIT HABIT ===== -->
+<div class="modal-overlay" id="modal-habit">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="modal-habit-title">Новая привычка</h2>
+    <div class="form-group">
+      <label>Название</label>
+      <input type="text" id="habit-name-input" placeholder="Например: Читать 20 минут" maxlength="60">
+    </div>
+    <div class="form-group">
+      <label>Тег</label>
+      <div class="tags-grid" id="tag-grid">
+        <button class="tag-option selected" data-tag="">Нет</button>
+        <button class="tag-option" data-tag="Exercising">Спорт</button>
+        <button class="tag-option" data-tag="Mind">Разум</button>
+        <button class="tag-option" data-tag="Health">Здоровье</button>
+        <button class="tag-option" data-tag="Work">Работа</button>
+        <button class="tag-option" data-tag="School">Учёба</button>
+        <button class="tag-option" data-tag="Family">Семья</button>
+        <button class="tag-option" data-tag="Productivity">Продуктивность</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Цель (опционально)</label>
+      <input type="text" id="habit-goal-input" placeholder="Например: 30 раз / каждый день">
+    </div>
+    <button class="btn btn-primary" onclick="saveHabit()">Сохранить</button>
+    <button class="btn btn-danger" id="btn-delete-habit" onclick="deleteHabit()" style="display:none;">Удалить привычку</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-habit')">Отмена</button>
+  </div>
+</div>
+
+<!-- ===== MODAL: JOURNAL LIST ===== -->
+<div class="modal-overlay" id="modal-journals">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>Все привычки</h2>
+    <div id="journal-list-content"></div>
+    <button class="btn btn-ghost" style="margin-top:8px;" onclick="closeModal('modal-journals')">Закрыть</button>
+  </div>
+</div>
+
+<!-- ===== MODAL: ADD NOTE ===== -->
+<div class="modal-overlay" id="modal-note">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>Заметка</h2>
+    <textarea class="note-textarea" id="note-input" placeholder="Запишите мысль, наблюдение..."></textarea>
+    <button class="btn btn-primary" onclick="saveNote()">Сохранить</button>
+    <button class="btn btn-ghost" onclick="closeModal('modal-note')">Отмена</button>
+  </div>
+</div>
+
+<!-- ===== CONTEXT MENU ===== -->
+<div class="context-menu" id="context-menu">
+  <div class="context-item" onclick="ctxEdit()">✏️ Редактировать</div>
+  <div class="context-item" onclick="ctxArchive()">📦 В архив</div>
+  <div class="context-item danger" onclick="ctxDelete()">🗑 Удалить</div>
+  <div class="context-item" onclick="closeContextMenu()">Отмена</div>
+</div>
+
+<input type="file" id="import-input" accept=".json" style="display:none;" onchange="handleImport(event)">
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  habits: [],
+  logs: {},      // { "habitId_YYYY-MM-DD": "done"|"missed"|"" }
+  notes: [],
+  settings: { sound: true, chains: true, gistId: '', ghToken: '' }
+};
+
+let currentWeekOffset = 0;
+let editingHabitId = null;
+let selectedTag = '';
+let ctxHabitId = null;
+let barChart = null;
+let pieChart = null;
+let currentFilter = 'all';
+
+// ============================================================
+// DATE HELPERS
+// ============================================================
+function getWeekDays(offset = 0) {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0=Sun
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + mondayOffset + offset * 7);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+function dateKey(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function isToday(d) {
+  return dateKey(d) === dateKey(new Date());
+}
+
+function isFuture(d) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dd = new Date(d); dd.setHours(0,0,0,0);
+  return dd > today;
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString('ru', { day:'numeric', month:'short' });
+}
+
+const DAY_ABBR = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+const MONTHS_RU = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+
+// ============================================================
+// STORAGE
+// ============================================================
+function saveLocal() {
+  localStorage.setItem('habitState', JSON.stringify(state));
+}
+
+function loadLocal() {
+  const raw = localStorage.getItem('habitState');
+  if (raw) {
+    try {
+      const loaded = JSON.parse(raw);
+      state = { ...state, ...loaded };
+    } catch(e) {}
+  }
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+
+  if (name === 'trend') renderTrend();
+  if (name === 'notes') renderNotes();
+  if (name === 'setup') renderSetup();
+}
+
+// ============================================================
+// WEEK NAVIGATION
+// ============================================================
+function changeWeek(dir) {
+  currentWeekOffset += dir;
+  renderJournals();
+}
+
+function goToday() {
+  currentWeekOffset = 0;
+  renderJournals();
+}
+
+// ============================================================
+// FILTER
+// ============================================================
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-tag').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderJournals();
+}
+
+// ============================================================
+// RENDER JOURNALS
+// ============================================================
+function renderJournals() {
+  const days = getWeekDays(currentWeekOffset);
+  const todayEl = document.getElementById('today-num');
+  todayEl.textContent = new Date().getDate();
+
+  // Week title
+  const isCurrentWeek = currentWeekOffset === 0;
+  document.getElementById('week-title').textContent = isCurrentWeek
+    ? 'Эта неделя ▾'
+    : `${fmtDate(days[0])} – ${fmtDate(days[6])} ▾`;
+
+  document.getElementById('week-range').textContent =
+    `${fmtDate(days[0])} – ${fmtDate(days[6])}`;
+
+  // Day header
+  const hdr = document.getElementById('day-header');
+  hdr.innerHTML = '<span></span><span></span>';
+  days.forEach(d => {
+    const s = document.createElement('span');
+    s.textContent = DAY_ABBR[d.getDay()];
+    if (isToday(d)) s.classList.add('today-col');
+    hdr.appendChild(s);
+  });
+
+  // Habits
+  const list = document.getElementById('habit-list');
+  list.innerHTML = '';
+
+  let habits = state.habits.filter(h => !h.archived);
+  if (currentFilter !== 'all') {
+    habits = habits.filter(h => h.tag === currentFilter);
+  }
+
+  if (habits.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="emoji">🎯</div>
+        <h3>Нет привычек</h3>
+        <p>Нажмите <b>+</b> чтобы добавить первую привычку и начать трекинг</p>
+      </div>`;
+    return;
+  }
+
+  habits.forEach(habit => {
+    const card = document.createElement('div');
+    card.className = 'habit-card';
+    card.dataset.id = habit.id;
+
+    // Streak calc
+    let streak = 0;
+    let checkDate = new Date();
+    while (true) {
+      const k = dateKey(checkDate) + '_' + habit.id;
+      const logKey = habit.id + '_' + dateKey(checkDate);
+      const val = state.logs[logKey];
+      if (val === 'done') { streak++; checkDate.setDate(checkDate.getDate()-1); }
+      else break;
+      if (streak > 365) break;
+    }
+
+    // Week completions
+    const weekDone = days.filter(d => state.logs[habit.id + '_' + dateKey(d)] === 'done').length;
+    const weekMissed = days.filter(d => state.logs[habit.id + '_' + dateKey(d)] === 'missed').length;
+
+    const badgeClass = streak > 0 ? 'green' : weekMissed > 0 ? 'red' : '';
+    const badgeNum = streak || weekDone;
+
+    card.innerHTML = `
+      <div class="habit-header">
+        <div>
+          <div class="habit-name">${habit.name}</div>
+          ${habit.tag ? `<div class="habit-tag">${habit.tag}${habit.goal ? ' · '+habit.goal : ''}</div>` : habit.goal ? `<div class="habit-tag">${habit.goal}</div>` : ''}
+        </div>
+        <div class="streak-badge ${badgeClass}">
+          <span class="streak-num">${badgeNum}</span>
+        </div>
+      </div>
+      <div class="day-grid" id="grid-${habit.id}"></div>
+    `;
+
+    // Long press
+    let pressTimer = null;
+    card.addEventListener('touchstart', e => {
+      pressTimer = setTimeout(() => showContextMenu(e, habit.id), 600);
+    }, { passive: true });
+    card.addEventListener('touchend', () => clearTimeout(pressTimer));
+    card.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+    // Double tap to edit
+    let lastTap = 0;
+    card.addEventListener('touchend', e => {
+      const now = Date.now();
+      if (now - lastTap < 300) openEditHabit(habit.id);
+      lastTap = now;
+    });
+
+    list.appendChild(card);
+
+    // Render grid cells
+    const grid = document.getElementById('grid-' + habit.id);
+    days.forEach(d => {
+      const cell = document.createElement('div');
+      cell.className = 'day-cell';
+      const key = habit.id + '_' + dateKey(d);
+      const val = state.logs[key] || '';
+      if (val === 'done') cell.classList.add('done');
+      else if (val === 'missed') cell.classList.add('missed');
+      if (isToday(d)) cell.classList.add('today');
+      if (isFuture(d)) cell.classList.add('future');
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      cell.appendChild(dot);
+      if (!isFuture(d)) {
+        cell.addEventListener('click', e => { e.stopPropagation(); toggleCell(habit.id, d, cell); });
+      }
+      grid.appendChild(cell);
+    });
+  });
+}
+
+// ============================================================
+// TOGGLE CELL
+// ============================================================
+function toggleCell(habitId, date, cell) {
+  const key = habitId + '_' + dateKey(date);
+  const cur = state.logs[key] || '';
+  const next = cur === '' ? 'done' : cur === 'done' ? 'missed' : '';
+  if (next === '') delete state.logs[key];
+  else state.logs[key] = next;
+
+  cell.classList.remove('done', 'missed');
+  if (next === 'done') {
+    cell.classList.add('done');
+    if (state.settings.sound) playTick();
+  } else if (next === 'missed') {
+    cell.classList.add('missed');
+  }
+
+  saveLocal();
+  // Refresh streak badge only (lightweight)
+  renderJournals();
+  syncToGistDebounced();
+}
+
+// ============================================================
+// SOUND
+// ============================================================
+function playTick() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(0.3, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+    o.start(); o.stop(ctx.currentTime + 0.15);
+  } catch(e) {}
+}
+
+// ============================================================
+// CONTEXT MENU
+// ============================================================
+function showContextMenu(e, id) {
+  ctxHabitId = id;
+  const menu = document.getElementById('context-menu');
+  menu.classList.add('open');
+  const touch = e.touches ? e.touches[0] : e;
+  let x = touch.clientX, y = touch.clientY;
+  if (x + 200 > window.innerWidth) x = window.innerWidth - 200;
+  if (y + 160 > window.innerHeight) y = window.innerHeight - 160;
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  if (navigator.vibrate) navigator.vibrate(10);
+}
+
+function closeContextMenu() {
+  document.getElementById('context-menu').classList.remove('open');
+  ctxHabitId = null;
+}
+
+function ctxEdit() { closeContextMenu(); openEditHabit(ctxHabitId); }
+function ctxArchive() {
+  const h = state.habits.find(h => h.id === ctxHabitId);
+  if (h) h.archived = true;
+  saveLocal(); renderJournals();
+  closeContextMenu();
+}
+function ctxDelete() {
+  if (!confirm('Удалить эту привычку и все её данные?')) return;
+  state.habits = state.habits.filter(h => h.id !== ctxHabitId);
+  Object.keys(state.logs).forEach(k => { if (k.startsWith(ctxHabitId + '_')) delete state.logs[k]; });
+  saveLocal(); renderJournals();
+  closeContextMenu();
+}
+
+// Close menu on outside tap
+document.addEventListener('click', e => {
+  if (!e.target.closest('#context-menu')) closeContextMenu();
+});
+
+// ============================================================
+// MODAL: ADD/EDIT HABIT
+// ============================================================
+function openAddHabit() {
+  editingHabitId = null;
+  document.getElementById('modal-habit-title').textContent = 'Новая привычка';
+  document.getElementById('habit-name-input').value = '';
+  document.getElementById('habit-goal-input').value = '';
+  document.getElementById('btn-delete-habit').style.display = 'none';
+  selectedTag = '';
+  updateTagUI('');
+  openModal('modal-habit');
+  setTimeout(() => document.getElementById('habit-name-input').focus(), 300);
+}
+
+function openEditHabit(id) {
+  const h = state.habits.find(h => h.id === id);
+  if (!h) return;
+  editingHabitId = id;
+  document.getElementById('modal-habit-title').textContent = 'Редактировать';
+  document.getElementById('habit-name-input').value = h.name;
+  document.getElementById('habit-goal-input').value = h.goal || '';
+  document.getElementById('btn-delete-habit').style.display = 'block';
+  selectedTag = h.tag || '';
+  updateTagUI(selectedTag);
+  openModal('modal-habit');
+}
+
+function updateTagUI(tag) {
+  document.querySelectorAll('#tag-grid .tag-option').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.tag === tag);
+  });
+}
+
+document.querySelectorAll('#tag-grid .tag-option').forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectedTag = btn.dataset.tag;
+    updateTagUI(selectedTag);
+  });
+});
+
+function saveHabit() {
+  const name = document.getElementById('habit-name-input').value.trim();
+  if (!name) { document.getElementById('habit-name-input').focus(); return; }
+  const goal = document.getElementById('habit-goal-input').value.trim();
+
+  if (editingHabitId) {
+    const h = state.habits.find(h => h.id === editingHabitId);
+    if (h) { h.name = name; h.tag = selectedTag; h.goal = goal; }
+  } else {
+    state.habits.push({ id: Date.now().toString(), name, tag: selectedTag, goal, archived: false, createdAt: new Date().toISOString() });
+  }
+
+  saveLocal(); renderJournals();
+  closeModal('modal-habit');
+  syncToGistDebounced();
+}
+
+function deleteHabit() {
+  if (!editingHabitId) return;
+  if (!confirm('Удалить привычку?')) return;
+  state.habits = state.habits.filter(h => h.id !== editingHabitId);
+  saveLocal(); renderJournals();
+  closeModal('modal-habit');
+}
+
+// ============================================================
+// MODAL: JOURNAL LIST
+// ============================================================
+function openJournalList() {
+  const c = document.getElementById('journal-list-content');
+  c.innerHTML = '';
+  const active = state.habits.filter(h => !h.archived);
+  const archived = state.habits.filter(h => h.archived);
+
+  if (active.length) {
+    c.innerHTML += `<div style="font-size:12px;color:var(--text3);text-transform:uppercase;padding:8px 0 6px;font-weight:600;letter-spacing:.5px;">Активные</div>`;
+    active.forEach(h => {
+      c.innerHTML += `<div style="padding:12px 0;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;" onclick="openEditHabit('${h.id}');closeModal('modal-journals')">
+        <span style="font-size:15px;">${h.name}</span>
+        <span style="font-size:13px;color:var(--text3);">${h.tag || ''}</span>
+      </div>`;
+    });
+  }
+
+  if (archived.length) {
+    c.innerHTML += `<div style="font-size:12px;color:var(--text3);text-transform:uppercase;padding:12px 0 6px;font-weight:600;letter-spacing:.5px;">В архиве</div>`;
+    archived.forEach(h => {
+      c.innerHTML += `<div style="padding:12px 0;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:15px;color:var(--text3);">${h.name}</span>
+        <button onclick="unarchiveHabit('${h.id}')" style="font-size:12px;background:var(--accent);color:#000;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;">Восстановить</button>
+      </div>`;
+    });
+  }
+
+  openModal('modal-journals');
+}
+
+function unarchiveHabit(id) {
+  const h = state.habits.find(h => h.id === id);
+  if (h) { h.archived = false; saveLocal(); renderJournals(); openJournalList(); }
+}
+
+// ============================================================
+// TREND PAGE
+// ============================================================
+function renderTrend() {
+  // Stats
+  let total = 0, done = 0, missed = 0;
+  Object.values(state.logs).forEach(v => {
+    total++;
+    if (v === 'done') done++;
+    else if (v === 'missed') missed++;
+  });
+  const empty = total - done - missed;
+
+  const sr = document.getElementById('stats-row');
+  sr.innerHTML = `
+    <div class="stat-card"><div class="stat-num green">${done}</div><div class="stat-lbl">Выполнено</div></div>
+    <div class="stat-card"><div class="stat-num red">${missed}</div><div class="stat-lbl">Пропущено</div></div>
+    <div class="stat-card"><div class="stat-num accent">${state.habits.filter(h=>!h.archived).length}</div><div class="stat-lbl">Привычек</div></div>
+  `;
+
+  // Bar chart: last 6 months
+  const months = [];
+  const doneCounts = [], missedCounts = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(1); d.setMonth(d.getMonth() - i);
+    const m = d.getMonth(), y = d.getFullYear();
+    months.push(MONTHS_RU[m]);
+    let md = 0, mm = 0;
+    Object.entries(state.logs).forEach(([k, v]) => {
+      const parts = k.split('_');
+      const dateStr = parts[parts.length - 1];
+      const dd = new Date(dateStr);
+      if (dd.getMonth() === m && dd.getFullYear() === y) {
+        if (v === 'done') md++;
+        else if (v === 'missed') mm++;
+      }
+    });
+    doneCounts.push(md);
+    missedCounts.push(mm);
+  }
+
+  if (barChart) barChart.destroy();
+  const barCtx = document.getElementById('barChart').getContext('2d');
+  barChart = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [
+        { label: 'Выполнено', data: doneCounts, backgroundColor: '#30d158', borderRadius: 6 },
+        { label: 'Пропущено', data: missedCounts, backgroundColor: '#ff453a', borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#aeaeb2', font: { size: 12 } } } },
+      scales: {
+        x: { ticks: { color: '#636366' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#636366' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  if (pieChart) pieChart.destroy();
+  const pieCtx = document.getElementById('pieChart').getContext('2d');
+  pieChart = new Chart(pieCtx, {
+    type: 'doughnut',
+    data: {
+      labels: [`Выполнено (${done})`, `Пропущено (${missed})`, `Нейтрально (${empty})`],
+      datasets: [{
+        data: [done, missed, empty],
+        backgroundColor: ['#30d158', '#ff453a', '#3a3a3c'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#aeaeb2', padding: 16, font: { size: 12 } } }
+      },
+      cutout: '60%'
+    }
+  });
+}
+
+// ============================================================
+// NOTES
+// ============================================================
+function openAddNote() {
+  document.getElementById('note-input').value = '';
+  openModal('modal-note');
+  setTimeout(() => document.getElementById('note-input').focus(), 300);
+}
+
+function saveNote() {
+  const text = document.getElementById('note-input').value.trim();
+  if (!text) return;
+  state.notes.unshift({ id: Date.now().toString(), text, date: new Date().toISOString() });
+  saveLocal(); renderNotes();
+  closeModal('modal-note');
+}
+
+function renderNotes() {
+  const list = document.getElementById('notes-list');
+  if (!state.notes.length) {
+    list.innerHTML = `<div class="empty-state"><div class="emoji">📝</div><h3>Нет заметок</h3><p>Нажмите + чтобы добавить заметку</p></div>`;
+    return;
+  }
+  list.innerHTML = state.notes.map(n => `
+    <div class="note-card" onclick="deleteNote('${n.id}')">
+      <div class="note-date">${new Date(n.date).toLocaleDateString('ru', {day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+      <div class="note-text">${n.text.replace(/\n/g,'<br>')}</div>
+    </div>
+  `).join('');
+}
+
+function deleteNote(id) {
+  if (!confirm('Удалить заметку?')) return;
+  state.notes = state.notes.filter(n => n.id !== id);
+  saveLocal(); renderNotes();
+}
+
+// ============================================================
+// SETUP
+// ============================================================
+function renderSetup() {
+  document.getElementById('toggle-sound').className = 'toggle' + (state.settings.sound ? ' on' : '');
+  document.getElementById('toggle-chains').className = 'toggle' + (state.settings.chains ? ' on' : '');
+  document.getElementById('gh-token').value = state.settings.ghToken || '';
+  document.getElementById('gh-gist-id').value = state.settings.gistId || '';
+}
+
+function toggleSetting(key) {
+  state.settings[key] = !state.settings[key];
+  saveLocal(); renderSetup();
+}
+
+// ============================================================
+// GITHUB GIST INTEGRATION
+// ============================================================
+/*
+  КАК НАСТРОИТЬ GITHUB GIST:
+  1. Перейдите на github.com и войдите в аккаунт
+  2. Нажмите на аватар → Settings → Developer Settings → Personal access tokens → Tokens (classic)
+  3. Generate new token → выберите scope "gist" → Generate
+  4. Скопируйте токен (начинается с ghp_)
+  5. Вставьте токен в поле "GitHub Token" в настройках
+  6. Нажмите "Сохранить и подключить" — Gist создастся автоматически
+  7. Ваши данные будут синхронизироваться в фоне!
+*/
+
+async function saveGistSettings() {
+  const token = document.getElementById('gh-token').value.trim();
+  const gistId = document.getElementById('gh-gist-id').value.trim();
+  state.settings.ghToken = token;
+  state.settings.gistId = gistId;
+  saveLocal();
+
+  if (!token) { showGistStatus('Введите GitHub токен', 'err'); return; }
+
+  if (!gistId) {
+    // Create new gist
+    showGistStatus('Создаём новый Gist...', 'loading');
+    try {
+      const res = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: 'Habit Tracker Data',
+          public: false,
+          files: { 'habits.json': { content: JSON.stringify(state, null, 2) } }
+        })
+      });
+      const data = await res.json();
+      if (data.id) {
+        state.settings.gistId = data.id;
+        document.getElementById('gh-gist-id').value = data.id;
+        saveLocal();
+        showGistStatus(`✅ Gist создан! ID: ${data.id}`, 'ok');
+      } else {
+        showGistStatus('Ошибка: ' + (data.message || 'Неверный токен'), 'err');
+      }
+    } catch(e) {
+      showGistStatus('Ошибка сети: ' + e.message, 'err');
+    }
+  } else {
+    // Test existing gist
+    showGistStatus('Проверяем подключение...', 'loading');
+    try {
+      const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+        headers: { 'Authorization': `token ${token}` }
+      });
+      if (res.ok) {
+        showGistStatus('✅ Подключено успешно!', 'ok');
+        // Load from gist
+        const data = await res.json();
+        const content = data.files['habits.json']?.content;
+        if (content) {
+          try {
+            const loaded = JSON.parse(content);
+            state.habits = loaded.habits || state.habits;
+            state.logs = loaded.logs || state.logs;
+            state.notes = loaded.notes || state.notes;
+            saveLocal(); renderJournals();
+          } catch(e) {}
+        }
+      } else {
+        showGistStatus('Ошибка: ' + res.status, 'err');
+      }
+    } catch(e) {
+      showGistStatus('Ошибка сети', 'err');
+    }
+  }
+}
+
+async function syncToGist() {
+  const { ghToken: token, gistId } = state.settings;
+  if (!token || !gistId) return;
+
+  setSyncIndicator('Синхронизация...', true);
+  try {
+    const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: { 'habits.json': { content: JSON.stringify(state, null, 2) } } })
+    });
+    if (res.ok) setSyncIndicator('Синхронизировано ✓', false);
+    else setSyncIndicator('Ошибка синхронизации', false);
+  } catch(e) {
+    setSyncIndicator('Оффлайн — данные сохранены локально', false);
+  }
+  setTimeout(() => setSyncIndicator('', false), 3000);
+}
+
+let gistTimer = null;
+function syncToGistDebounced() {
+  clearTimeout(gistTimer);
+  gistTimer = setTimeout(syncToGist, 2000);
+}
+
+function setSyncIndicator(msg, loading) {
+  const el = document.getElementById('sync-indicator');
+  el.textContent = msg;
+  el.className = 'sync-indicator' + (loading ? ' syncing' : '');
+}
+
+function showGistStatus(msg, type) {
+  const el = document.getElementById('gist-status');
+  el.textContent = msg;
+  el.className = 'gist-status ' + type;
+}
+
+// ============================================================
+// EXPORT / IMPORT
+// ============================================================
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `habits_${dateKey(new Date())}.json`;
+  a.click();
+}
+
+function importData() { document.getElementById('import-input').click(); }
+
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const loaded = JSON.parse(ev.target.result);
+      if (loaded.habits && loaded.logs) {
+        state.habits = loaded.habits;
+        state.logs = loaded.logs;
+        state.notes = loaded.notes || [];
+        saveLocal(); renderJournals();
+        alert('Данные импортированы!');
+      } else { alert('Неверный формат файла'); }
+    } catch(e) { alert('Ошибка чтения файла'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function clearAllData() {
+  if (!confirm('Удалить ВСЕ данные? Это действие необратимо!')) return;
+  state.habits = []; state.logs = {}; state.notes = [];
+  saveLocal(); renderJournals();
+}
+
+// ============================================================
+// MODAL HELPERS
+// ============================================================
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+// ============================================================
+// DEMO DATA (if empty)
+// ============================================================
+function addDemoData() {
+  if (state.habits.length > 0) return;
+  const habits = [
+    { id: '1', name: 'Турник 20 раз в день', tag: 'Exercising', goal: '20 раз', archived: false, createdAt: new Date().toISOString() },
+    { id: '2', name: 'Бег', tag: 'Exercising', goal: '', archived: false, createdAt: new Date().toISOString() },
+    { id: '3', name: 'Китайский', tag: 'Mind', goal: '30 мин', archived: false, createdAt: new Date().toISOString() },
+    { id: '4', name: 'Казахский язык Kaizen', tag: 'Mind', goal: '', archived: false, createdAt: new Date().toISOString() },
+    { id: '5', name: 'Обучение Cybersecurity', tag: 'Work', goal: '', archived: false, createdAt: new Date().toISOString() },
+  ];
+  state.habits = habits;
+
+  // Add some logs
+  const today = new Date();
+  habits.forEach((h, hi) => {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      if (d > today) continue;
+      const key = h.id + '_' + dateKey(d);
+      if (hi === 0) state.logs[key] = 'done'; // турник — все дни
+      else if (hi === 2) state.logs[key] = Math.random() > 0.2 ? 'done' : 'missed'; // китайский
+      else if (hi === 1) state.logs[key] = i % 3 === 0 ? 'done' : ''; // бег через день
+    }
+  });
+
+  saveLocal();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  loadLocal();
+  addDemoData();
+  renderJournals();
+  // PWA viewport fix
+  document.documentElement.style.setProperty('--safe-top', `${window.safeAreaInsets?.top || 0}px`);
+}
+
+init();
+</script>
+</body>
+</html>
