@@ -154,6 +154,47 @@ html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text
 
 /* TREND */
 .trend-section { padding: 16px; }
+
+/* Habit selector list — как в оригинале: снизу под графиком */
+.trend-habit-list { margin-top: 0; border-top: 0.5px solid var(--border); }
+.trend-habit-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-bottom: 0.5px solid var(--border);
+  cursor: pointer; transition: background 0.12s;
+}
+.trend-habit-item:active { background: var(--card2); }
+.trend-habit-item.active-h { background: rgba(245,166,35,0.08); }
+.trend-habit-item .th-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--card2); flex-shrink: 0;
+}
+.trend-habit-item .th-dot.g { background: var(--green); }
+.trend-habit-item .th-name {
+  font-size: 16px; color: var(--text2);
+}
+.trend-habit-item.active-h .th-name { color: var(--text); font-weight: 600; }
+.th-summarize { font-size: 15px; color: var(--text3); }
+
+/* Habit title + date range above chart */
+.trend-habit-title {
+  font-size: 18px; font-weight: 700; text-align: center;
+  padding: 12px 20px 2px; color: var(--text);
+}
+.trend-date-range {
+  font-size: 13px; color: var(--text2); text-align: center; margin-bottom: 10px;
+}
+
+/* Chart type toggle */
+.chart-type-row {
+  display: flex; justify-content: center; gap: 8px; margin-bottom: 4px;
+}
+.ct-btn {
+  width: 52px; height: 36px; border-radius: 10px; border: none;
+  cursor: pointer; background: var(--card2); color: var(--text3);
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.ct-btn.active { background: var(--accent); color: #000; }
+
 .period-pills { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; }
 .period-pills::-webkit-scrollbar { display: none; }
 .period-pill { padding: 8px 16px; border-radius: 20px; background: var(--card); color: var(--text3); font-size: 13px; font-weight: 600; border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
@@ -162,13 +203,14 @@ html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text
 .trend-card h3 { font-size: 13px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; font-weight: 600; }
 .chart-container { position: relative; height: 200px; }
 .pie-container { position: relative; height: 220px; }
-.stats-row { display: flex; gap: 10px; margin-bottom: 14px; }
-.stat-card { flex: 1; background: var(--card); border-radius: 14px; padding: 14px 10px; text-align: center; }
-.stat-num { font-size: 28px; font-weight: 700; }
+.stats-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.stat-card { flex: 1; min-width: 60px; background: var(--card); border-radius: 14px; padding: 12px 8px; text-align: center; }
+.stat-num { font-size: 24px; font-weight: 700; }
 .stat-num.green { color: var(--green); }
 .stat-num.red { color: var(--red); }
 .stat-num.accent { color: var(--accent); }
-.stat-lbl { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.stat-num.gray { color: var(--gray, #636366); }
+.stat-lbl { font-size: 10px; color: var(--text3); margin-top: 2px; }
 
 /* SETUP */
 .setup-section { padding: 16px; }
@@ -219,6 +261,12 @@ html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text
 .sync-indicator { font-size: 11px; color: var(--text3); text-align: center; padding: 4px; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
 .sync-indicator.syncing { color: var(--accent); animation: pulse 1s infinite; }
+
+/* TREND page layout — chart fixed top, habits list scrolls below */
+#page-trend { display: none; flex-direction: column; overflow: hidden; }
+#page-trend.active { display: flex; }
+.trend-habit-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; border-top: 0.5px solid var(--border); margin-top: 4px; }
+.trend-habit-list::-webkit-scrollbar { display: none; }
 </style>
 </head>
 <body>
@@ -281,23 +329,31 @@ html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text
 
 <!-- PAGE: TREND -->
 <div class="page" id="page-trend">
-  <div class="top-bar">
-    <h1 data-i18n="trends">Тренды</h1>
+  <div class="top-bar" style="justify-content:space-between;">
+    <div style="width:36px;"></div>
+    <div class="chart-type-row" style="margin:0;">
+      <button class="ct-btn active" id="ct-bar" onclick="setChartType('bar')" title="Бар">📊</button>
+      <button class="ct-btn" id="ct-pie" onclick="setChartType('pie')" title="Круг">🥧</button>
+    </div>
+    <div style="width:36px;"></div>
   </div>
-  <div class="scroll-area">
-    <div class="trend-section">
-      <div class="stats-row" id="stats-row"></div>
-      <div class="period-pills" id="period-pills"></div>
-      <div class="trend-card">
-        <h3 id="bar-title">📊 Активность</h3>
-        <div class="chart-container"><canvas id="barChart"></canvas></div>
-      </div>
-      <div class="trend-card">
-        <h3 data-i18n="overall">🥧 Общий результат</h3>
-        <div class="pie-container"><canvas id="pieChart"></canvas></div>
+  <!-- Habit title + date range -->
+  <div class="trend-habit-title" id="tr-habit-title">Все привычки</div>
+  <div class="trend-date-range" id="tr-date-range"></div>
+  <!-- Chart -->
+  <div style="padding:0 16px 0;">
+    <div class="trend-card" style="margin-bottom:8px;">
+      <div id="chart-wrap" style="position:relative;height:200px;">
+        <canvas id="mainTrendChart"></canvas>
       </div>
     </div>
   </div>
+  <!-- Period pills -->
+  <div class="period-pills" id="period-pills" style="padding:0 16px 8px;"></div>
+  <!-- Stats row -->
+  <div class="stats-row" id="stats-row" style="padding:0 16px;margin-bottom:12px;"></div>
+  <!-- Habit list at bottom — like original app -->
+  <div class="trend-habit-list" id="trend-habit-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;"></div>
 </div>
 
 <!-- PAGE: NOTES -->
@@ -516,6 +572,7 @@ const I18N = {
     syncing:'Синхронизация...', synced:'Синхронизировано ✓', sync_err:'Ошибка синхронизации',
     offline:'Оффлайн — данные сохранены', period_1m:'1 мес', period_3m:'3 мес',
     period_6m:'6 мес', period_1y:'1 год', period_2y:'2 года', period_4y:'4 года',
+    all_h_trend:'Все привычки', skipped_l:'Пропуск', success_pct:'Успех', best_str:'Стрик',
   },
   en: {
     week:'Week', month:'Month', all:'All', sport:'Sport', today:'Today',
@@ -542,6 +599,7 @@ const I18N = {
     syncing:'Syncing...', synced:'Synced ✓', sync_err:'Sync error',
     offline:'Offline — saved locally', period_1m:'1m', period_3m:'3m',
     period_6m:'6m', period_1y:'1y', period_2y:'2y', period_4y:'4y',
+    all_h_trend:'All habits', skipped_l:'Skip', success_pct:'Success', best_str:'Best streak',
   }
 };
 const DAY_KEYS = ['sun','mon','tue','wed','thu','fri','sat'];
@@ -565,35 +623,54 @@ let selectedTag = '';
 let ctxHabitId = null;
 let currentFilter = 'all';
 let trendPeriod = '6m';
-let barChart = null, pieChart = null;
+// (barChart и pieChart заменены на mainTrendChart в новом renderTrend)
 
 // ============================================================
-// DATE HELPERS
+// DATE HELPERS  (FIX #1 — всегда локальная дата, не UTC)
 // ============================================================
-function dateKey(d) { return d.toISOString().split('T')[0]; }
+function dateKey(d) {
+  // ВАЖНО: используем локальные компоненты, а не toISOString (UTC)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 function isToday(d) { return dateKey(d) === dateKey(new Date()); }
-function isFuture(d) { const t = new Date(); t.setHours(0,0,0,0); const dd = new Date(d); dd.setHours(0,0,0,0); return dd > t; }
+function isFuture(d) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const dd = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return dd > now;
+}
 
 function getWeekDays(offset=0) {
   const today = new Date();
   const dow = today.getDay();
   const mondayOffset = dow === 0 ? -6 : 1 - dow;
-  const mon = new Date(today);
-  mon.setDate(today.getDate() + mondayOffset + offset*7);
-  return Array.from({length:7},(_,i)=>{ const d=new Date(mon); d.setDate(mon.getDate()+i); return d; });
+  // Строим monday через конструктор, без UTC-смещений
+  const mon = new Date(today.getFullYear(), today.getMonth(), today.getDate() + mondayOffset + offset * 7);
+  return Array.from({length:7}, (_, i) => new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i));
 }
 
 function getMonthDays(offset=0) {
   const today = new Date();
-  const y = today.getFullYear(), m = today.getMonth() + offset;
-  const first = new Date(y, m, 1);
-  const last = new Date(y, m+1, 0);
-  const days = [];
-  for (let i=1; i<=last.getDate(); i++) days.push(new Date(y, m, i));
-  return days;
+  const rawMonth = today.getMonth() + offset;
+  const y = today.getFullYear() + Math.floor(rawMonth / 12);
+  const m = ((rawMonth % 12) + 12) % 12;
+  const last = new Date(y, m + 1, 0).getDate();
+  return Array.from({length: last}, (_, i) => new Date(y, m, i + 1));
 }
 
 function fmtDate(d) { return d.getDate() + ' ' + t('months_short')[d.getMonth()]; }
+
+// FIX #1 — Автообновление в полночь (переключение на новый день)
+function scheduleMidnightRefresh() {
+  const now = new Date();
+  const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5) - now;
+  setTimeout(() => {
+    renderJournals(); // обновляем журнал с новой датой
+    scheduleMidnightRefresh(); // планируем следующую полночь
+  }, msUntilMidnight);
+}
 
 // ============================================================
 // i18n APPLY
@@ -848,90 +925,237 @@ function setFilter(f, el) {
 }
 
 // ============================================================
-// TREND PAGE
+// TREND PAGE  (FIX #2 — выбор привычки как в оригинале)
 // ============================================================
 const PERIODS = ['1m','3m','6m','1y','2y','4y'];
+let trendHabitId = 'all';
+let trendChartType = 'bar';
+let mainTrendChart = null;
+
+function setChartType(type) {
+  trendChartType = type;
+  document.getElementById('ct-bar').classList.toggle('active', type === 'bar');
+  document.getElementById('ct-pie').classList.toggle('active', type === 'pie');
+  renderTrend();
+}
 
 function renderTrend() {
-  // Stats
-  let total=0,done=0,missed=0;
-  Object.values(state.logs).forEach(v=>{ total++; if(v==='done') done++; else if(v==='missed') missed++; });
-  document.getElementById('stats-row').innerHTML = `
-    <div class="stat-card"><div class="stat-num green">${done}</div><div class="stat-lbl">${t('completed')}</div></div>
-    <div class="stat-card"><div class="stat-num red">${missed}</div><div class="stat-lbl">${t('missed')}</div></div>
-    <div class="stat-card"><div class="stat-num accent">${state.habits.filter(h=>!h.archived).length}</div><div class="stat-lbl">${t('habits')}</div></div>
-  `;
+  const selHabit = trendHabitId === 'all'
+    ? null : state.habits.find(h => h.id === trendHabitId);
 
-  // Period pills
+  // ── 1. Вычисляем границы выбранного периода ──────────────────
+  // Это единственный источник истины для ВСЕХ цифр и графика.
+  const pm = {'1m':1,'3m':3,'6m':6,'1y':12,'2y':24,'4y':48}[trendPeriod] || 6;
+  const useY = trendPeriod === '4y' || trendPeriod === '2y';
+
+  // periodStart — начало периода (00:00:00 первого дня)
+  const now = new Date();
+  let periodStart;
+  if (useY) {
+    const yrs = trendPeriod === '4y' ? 4 : 2;
+    periodStart = new Date(now.getFullYear() - yrs, now.getMonth(), 1);
+  } else {
+    periodStart = new Date(now.getFullYear(), now.getMonth() - (pm - 1), 1);
+  }
+  periodStart.setHours(0, 0, 0, 0);
+  const periodStartKey = dateKey(periodStart); // 'YYYY-MM-DD'
+
+  // ── 2. Хелпер: логи конкретной привычки, отфильтрованные по периоду ──
+  function logsForPeriod(hid) {
+    const r = {};
+    Object.entries(state.logs).forEach(([k, v]) => {
+      // Формат ключа: "habitId_YYYY-MM-DD"
+      const parts = k.split('_');
+      const ds = parts.slice(1).join('_'); // дата может содержать '_' если id содержит '_'
+      // Проверка принадлежности привычке
+      if (hid !== 'all' && !k.startsWith(hid + '_')) return;
+      // Проверка попадания в период
+      if (ds >= periodStartKey) r[k] = v;
+    });
+    return r;
+  }
+
+  // Логи для выбранной привычки (или всех) за выбранный период
+  const logs = logsForPeriod(trendHabitId);
+
+  // ── 3. Считаем цифры СТРОГО из logs (уже отфильтрованных по периоду) ──
+  let td = 0, tm = 0, ts = 0;
+  Object.values(logs).forEach(v => {
+    if (v === 'done') td++;
+    else if (v === 'missed') tm++;
+    else if (v === 'skipped') ts++;
+  });
+  const totalLog = td + tm + ts;
+  const pct = totalLog > 0 ? Math.round(td / totalLog * 100) : 0;
+
+  // Лучший стрик за период (только для конкретной привычки)
+  let bestStr = 0;
+  if (trendHabitId !== 'all') {
+    let cur = 0;
+    // Берём только даты в периоде, сортируем
+    Object.keys(logs)
+      .map(k => k.split('_').slice(1).join('_'))
+      .filter(ds => ds >= periodStartKey)
+      .sort()
+      .forEach(ds => {
+        if (state.logs[trendHabitId + '_' + ds] === 'done') {
+          cur++;
+          bestStr = Math.max(bestStr, cur);
+        } else {
+          cur = 0;
+        }
+      });
+  }
+
+  // ── 4. Заголовок и диапазон дат ──────────────────────────────
+  document.getElementById('tr-habit-title').textContent =
+    selHabit ? selHabit.name : (lang === 'en' ? 'All habits' : 'Все привычки');
+
+  const loc = lang === 'en' ? 'en-GB' : 'ru-RU';
+  const fromStr = periodStart.toLocaleDateString(loc, {day:'numeric', month:'short', year:'numeric'});
+  const nowStr  = now.toLocaleDateString(loc, {day:'numeric', month:'short'});
+  document.getElementById('tr-date-range').textContent = fromStr + ' — ' + nowStr + ' (today)';
+
+  // ── 5. Period pills ───────────────────────────────────────────
   const pp = document.getElementById('period-pills');
   pp.innerHTML = '';
   PERIODS.forEach(p => {
-    const btn = document.createElement('button');
-    btn.className = 'period-pill' + (trendPeriod===p?' active':'');
-    btn.textContent = t('period_'+p);
-    btn.onclick = () => { trendPeriod=p; renderTrend(); };
-    pp.appendChild(btn);
+    const b = document.createElement('button');
+    b.className = 'period-pill' + (trendPeriod === p ? ' active' : '');
+    b.textContent = t('period_' + p);
+    b.onclick = () => { trendPeriod = p; renderTrend(); };
+    pp.appendChild(b);
   });
 
-  document.getElementById('bar-title').textContent = t('activity');
-  document.querySelector('[data-i18n="overall"]').textContent = t('overall');
+  // ── 6. Stats row (те же td/tm/ts/pct/bestStr из периода) ──────
+  const sr = document.getElementById('stats-row');
+  if (trendHabitId === 'all') {
+    sr.innerHTML = `
+      <div class="stat-card"><div class="stat-num green">${td}</div><div class="stat-lbl">${t('completed')}</div></div>
+      <div class="stat-card"><div class="stat-num red">${tm}</div><div class="stat-lbl">${t('missed')}</div></div>
+      <div class="stat-card"><div class="stat-num accent">${state.habits.filter(h=>!h.archived).length}</div><div class="stat-lbl">${t('habits')}</div></div>`;
+  } else {
+    sr.innerHTML = `
+      <div class="stat-card"><div class="stat-num green">${td}</div><div class="stat-lbl">${t('completed')}</div></div>
+      <div class="stat-card"><div class="stat-num red">${tm}</div><div class="stat-lbl">${lang==='en'?'Missed':'Пропущено'}</div></div>
+      <div class="stat-card"><div class="stat-num gray">${ts}</div><div class="stat-lbl">${lang==='en'?'Skip':'Пропуск'}</div></div>
+      <div class="stat-card"><div class="stat-num accent">${pct}%</div><div class="stat-lbl">${lang==='en'?'Success':'Успех'}</div></div>
+      <div class="stat-card"><div class="stat-num accent">${bestStr}</div><div class="stat-lbl">${lang==='en'?'Best streak':'Стрик'}</div></div>`;
+  }
 
-  // Compute period data
+  // ── 7. Chart data — тот же диапазон, что и у цифр ────────────
   const months = t('months_short');
-  const periodMonths = {'1m':1,'3m':3,'6m':6,'1y':12,'2y':24,'4y':48}[trendPeriod]||6;
-  const labels=[], doneCounts=[], missedCounts=[];
+  const labels = [], dones = [], misses = [];
 
-  if (trendPeriod==='4y'||trendPeriod==='2y') {
-    // Group by year
-    const years = trendPeriod==='4y' ? 4 : 2;
-    for (let i=years-1; i>=0; i--) {
-      const y = new Date().getFullYear()-i;
+  if (useY) {
+    // Группируем по годам внутри периода
+    const yrs = trendPeriod === '4y' ? 4 : 2;
+    for (let i = yrs - 1; i >= 0; i--) {
+      const y = now.getFullYear() - i;
+      const yStart = y + '-01-01';
+      const yEnd   = y + '-12-31';
       labels.push(String(y));
-      let md=0,mm=0;
-      Object.entries(state.logs).forEach(([k,v])=>{
-        const parts=k.split('_'); const ds=parts[parts.length-1]; const dd=new Date(ds);
-        if (dd.getFullYear()===y) { if(v==='done') md++; else if(v==='missed') mm++; }
+      let md = 0, mm = 0;
+      Object.entries(logs).forEach(([k, v]) => {
+        const ds = k.split('_').slice(1).join('_');
+        // ds уже прошло фильтр периода; дополнительно проверяем год
+        if (ds >= yStart && ds <= yEnd) {
+          if (v === 'done') md++;
+          else if (v === 'missed') mm++;
+        }
       });
-      doneCounts.push(md); missedCounts.push(mm);
+      dones.push(md);
+      misses.push(mm);
     }
   } else {
-    for (let i=periodMonths-1; i>=0; i--) {
-      const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-i);
-      const m=d.getMonth(), y=d.getFullYear();
-      labels.push(months[m]+(periodMonths>12?' '+y:''));
-      let md=0,mm=0;
-      Object.entries(state.logs).forEach(([k,v])=>{
-        const parts=k.split('_'); const ds=parts[parts.length-1]; const dd=new Date(ds);
-        if (dd.getMonth()===m&&dd.getFullYear()===y) { if(v==='done') md++; else if(v==='missed') mm++; }
+    // Группируем по месяцам внутри периода
+    for (let i = pm - 1; i >= 0; i--) {
+      const ref = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const m = ref.getMonth(), y = ref.getFullYear();
+      const pfx = y + '-' + String(m + 1).padStart(2, '0');
+      labels.push(months[m] + (pm > 12 ? ' ' + y : ''));
+      let md = 0, mm = 0;
+      Object.entries(logs).forEach(([k, v]) => {
+        const ds = k.split('_').slice(1).join('_');
+        // ds уже прошло фильтр периода; дополнительно проверяем месяц
+        if (ds.startsWith(pfx)) {
+          if (v === 'done') md++;
+          else if (v === 'missed') mm++;
+        }
       });
-      doneCounts.push(md); missedCounts.push(mm);
+      dones.push(md);
+      misses.push(mm);
     }
   }
 
-  if (barChart) barChart.destroy();
-  barChart = new Chart(document.getElementById('barChart').getContext('2d'),{
-    type:'bar',
-    data:{ labels, datasets:[
-      {label:t('completed'),data:doneCounts,backgroundColor:'#30d158',borderRadius:6},
-      {label:t('missed'),data:missedCounts,backgroundColor:'#ff453a',borderRadius:6}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'#aeaeb2',font:{size:12}}}},
-      scales:{x:{ticks:{color:'#636366'},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#636366'},grid:{color:'rgba(255,255,255,0.05)'}}}}
-  });
+  // ── 8. Рисуем график ─────────────────────────────────────────
+  if (mainTrendChart) mainTrendChart.destroy();
+  const ctx = document.getElementById('mainTrendChart').getContext('2d');
 
-  if (pieChart) pieChart.destroy();
-  const empty = total-done-missed;
-  pieChart = new Chart(document.getElementById('pieChart').getContext('2d'),{
-    type:'doughnut',
-    data:{
-      labels:[`${t('completed')} (${done})`,`${t('missed')} (${missed})`,`(${empty})`],
-      datasets:[{data:[done,missed,empty],backgroundColor:['#30d158','#ff453a','#3a3a3c'],borderWidth:0}]
-    },
-    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
-      plugins:{legend:{position:'bottom',labels:{color:'#aeaeb2',padding:16,font:{size:12}}}}}
+  if (trendChartType === 'bar') {
+    mainTrendChart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [
+        {label: t('completed'), data: dones,  backgroundColor: '#30d158', borderRadius: 5},
+        {label: t('missed'),    data: misses, backgroundColor: '#ff453a', borderRadius: 5}
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#aeaeb2', font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: '#636366', font: {size: 11} }, grid: { color: 'rgba(255,255,255,.05)' } },
+          y: { ticks: { color: '#636366', font: {size: 11} }, grid: { color: 'rgba(255,255,255,.05)' } }
+        }
+      }
+    });
+  } else {
+    // Pie — те же td/tm/ts из периода
+    const neutralOrEmpty = ts > 0 ? ts : (totalLog === 0 ? 1 : 0);
+    mainTrendChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: [
+          t('completed') + ' (' + td + ' days)',
+          t('missed')    + ' (' + tm + ' days)',
+          'Neutral ('    + neutralOrEmpty + ' days)'
+        ],
+        datasets: [{
+          data: [td, tm, neutralOrEmpty],
+          backgroundColor: ['#30d158', '#ff453a', '#3a3a3c'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: '#aeaeb2', padding: 14, font: { size: 12 } } } }
+      }
+    });
+  }
+
+  // ── 9. Список привычек снизу ──────────────────────────────────
+  const list = document.getElementById('trend-habit-list');
+  list.innerHTML = '';
+
+  // "Summarize All"
+  const sumRow = document.createElement('div');
+  sumRow.className = 'trend-habit-item' + (trendHabitId === 'all' ? ' active-h' : '');
+  sumRow.innerHTML = `<div class="th-dot${trendHabitId==='all'?' g':''}"></div><span class="th-summarize">Summarize All</span>`;
+  sumRow.onclick = () => { trendHabitId = 'all'; renderTrend(); };
+  list.appendChild(sumRow);
+
+  // Каждая привычка — точка зелёная если есть выполнения за период
+  state.habits.filter(h => !h.archived).forEach(h => {
+    const lhPeriod = logsForPeriod(h.id);
+    const hd = Object.values(lhPeriod).filter(v => v === 'done').length;
+    const row = document.createElement('div');
+    row.className = 'trend-habit-item' + (trendHabitId === h.id ? ' active-h' : '');
+    row.innerHTML = `<div class="th-dot${hd > 0 ? ' g' : ''}"></div><span class="th-name">${h.name}</span>`;
+    row.onclick = () => { trendHabitId = h.id; renderTrend(); };
+    list.appendChild(row);
   });
 }
+
+
 
 // ============================================================
 // NOTES
@@ -1076,6 +1300,7 @@ function init(){
   applyLang();
   addDemoData();
   renderJournals();
+  scheduleMidnightRefresh(); // FIX #1 — авто-обновление в 00:00
 }
 init();
 </script>
