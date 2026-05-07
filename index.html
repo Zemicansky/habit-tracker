@@ -111,7 +111,7 @@ html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text
 /* ACTION BAR (Erase/Yes/No/Skip) */
 .action-bar { position: fixed; bottom: calc(var(--safe-bottom) + 56px); left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 398px; background: var(--card); border-radius: 18px; padding: 10px 12px; display: none; z-index: 50; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
 .action-bar.visible { display: block; }
-.action-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.action-btns { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .action-btn { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 6px; border-radius: 14px; border: none; cursor: pointer; background: var(--card2); transition: transform 0.1s, opacity 0.1s; }
 .action-btn:active { transform: scale(0.93); opacity: 0.8; }
 .action-btn .ab-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
@@ -243,6 +243,24 @@ html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text
 .note-date { font-size: 12px; color: var(--text3); margin-bottom: 6px; }
 .note-text { font-size: 14px; color: var(--text); line-height: 1.5; }
 .note-textarea { width: 100%; background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; color: var(--text); font-size: 15px; resize: none; height: 100px; outline: none; font-family: inherit; margin-bottom: 10px; }
+
+/* DAY NOTE INDICATOR */
+.day-cell.has-note::after, .month-cell.has-note::after {
+  content: '';
+  position: absolute;
+  bottom: 3px; right: 3px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+}
+.day-cell { position: relative; }
+.month-cell { position: relative; }
+
+/* DAY NOTE MODAL */
+.day-note-habit { font-size: 13px; color: var(--accent); margin-bottom: 4px; font-weight: 600; }
+.day-note-date  { font-size: 12px; color: var(--text3); margin-bottom: 14px; }
+.note-char-count { font-size: 11px; color: var(--text3); text-align: right; margin-top: 4px; }
 
 /* EMPTY */
 .empty-state { text-align: center; padding: 60px 32px; color: var(--text3); }
@@ -476,6 +494,24 @@ html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text
       <div class="ab-icon">⇒</div>
       <span class="ab-label" data-i18n="skip">Пропуск</span>
     </button>
+    <button class="action-btn" onclick="openDayNote()" style="background:var(--card2);">
+      <div class="ab-icon" style="background:var(--blue);">📝</div>
+      <span class="ab-label">Заметка</span>
+    </button>
+  </div>
+</div>
+
+<!-- MODAL: DAY NOTE (habit + day) -->
+<div class="modal-overlay" id="modal-day-note">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="day-note-habit" id="day-note-habit-name"></div>
+    <div class="day-note-date"  id="day-note-date-label"></div>
+    <textarea class="note-textarea" id="day-note-input" placeholder="Запишите заметку к этому дню..." style="height:120px;"></textarea>
+    <div class="note-char-count" id="day-note-chars">0 / 500</div>
+    <button class="btn btn-primary" onclick="saveDayNote()">Сохранить</button>
+    <button class="btn btn-danger"  id="day-note-delete-btn" onclick="deleteDayNote()" style="display:none;">Удалить заметку</button>
+    <button class="btn btn-ghost"   onclick="closeModal('modal-day-note')">Отмена</button>
   </div>
 </div>
 
@@ -610,7 +646,7 @@ function t(key) { return (I18N[lang] || I18N.ru)[key] || key; }
 // STATE
 // ============================================================
 let state = {
-  habits: [], logs: {}, notes: [],
+  habits: [], logs: {}, notes: [], dayNotes: {},
   settings: { sound: true, chains: true, gistId: '', ghToken: '', lang: 'ru' }
 };
 let lang = 'ru';
@@ -700,7 +736,7 @@ function setLang(l) {
 function saveLocal() { localStorage.setItem('habitState2', JSON.stringify(state)); }
 function loadLocal() {
   const raw = localStorage.getItem('habitState2');
-  if (raw) { try { state = {...state, ...JSON.parse(raw)}; } catch(e){} }
+  if (raw) { try { const parsed = JSON.parse(raw); state = {...state, ...parsed}; if(!state.dayNotes) state.dayNotes={}; } catch(e){} }
   lang = state.settings.lang || 'ru';
 }
 
@@ -901,6 +937,9 @@ function renderHabits(days, mode) {
       else if (val==='skipped') cell.classList.add('skipped');
       if (isToday(d)) cell.classList.add('today');
       if (isFuture(d)) cell.classList.add('future');
+      // Day note indicator
+      const dnKey = dayNoteKey(habit.id, dateKey(d));
+      if (state.dayNotes[dnKey]) cell.classList.add('has-note');
       const dot = document.createElement('div');
       dot.className = 'dot'; cell.appendChild(dot);
       if (!isFuture(d)) {
@@ -1158,6 +1197,93 @@ function renderTrend() {
 
 
 // ============================================================
+// DAY NOTES (привычка + конкретный день)
+// ============================================================
+function dayNoteKey(habitId, dateStr) { return habitId + '__' + dateStr; }
+
+// Локальные переменные — не зависят от selectedHabitId (который сбрасывается при клике вне action bar)
+let _dnHabitId = null;
+let _dnDate = null;
+
+function openDayNote() {
+  if (!selectedHabitId || !selectedDate) return;
+  // Сохраняем локально перед открытием модала
+  _dnHabitId = selectedHabitId;
+  _dnDate = selectedDate;
+
+  const habit = state.habits.find(h => h.id === _dnHabitId);
+  const key = dayNoteKey(_dnHabitId, _dnDate);
+  const existing = state.dayNotes[key] || '';
+
+  document.getElementById('day-note-habit-name').textContent = habit ? habit.name : '';
+  const parts = _dnDate.split('-');
+  const d = new Date(+parts[0], +parts[1]-1, +parts[2]);
+  document.getElementById('day-note-date-label').textContent = d.toLocaleDateString(lang==='en'?'en-US':'ru-RU', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  document.getElementById('day-note-input').value = existing;
+  document.getElementById('day-note-chars').textContent = existing.length + ' / 500';
+  document.getElementById('day-note-delete-btn').style.display = existing ? 'block' : 'none';
+
+  openModal('modal-day-note');
+  setTimeout(() => document.getElementById('day-note-input').focus(), 300);
+}
+
+function saveDayNote() {
+  if (!_dnHabitId || !_dnDate) return;
+  const text = document.getElementById('day-note-input').value.trim();
+  if (!text) { closeModal('modal-day-note'); return; }
+
+  const key = dayNoteKey(_dnHabitId, _dnDate);
+  const habit = state.habits.find(h => h.id === _dnHabitId);
+  const habitName = habit ? habit.name : '';
+  const parts = _dnDate.split('-');
+  const d = new Date(+parts[0], +parts[1]-1, +parts[2]);
+  const dateLabel = d.toLocaleDateString(lang==='en'?'en-US':'ru-RU', {day:'numeric', month:'long', year:'numeric'});
+
+  // Сохраняем в dayNotes (для индикатора на ячейке)
+  state.dayNotes[key] = text;
+
+  // Сохраняем / обновляем в Notes (страница Заметки) с именем привычки
+  const noteId = 'dn__' + key; // уникальный стабильный ID
+  const existing = state.notes.findIndex(n => n.id === noteId);
+  const noteObj = {
+    id: noteId,
+    text: '📌 ' + habitName + '\n' + dateLabel + '\n\n' + text,
+    date: new Date(+parts[0], +parts[1]-1, +parts[2], 12, 0, 0).toISOString(),
+    habitId: _dnHabitId,
+    dayDate: _dnDate
+  };
+  if (existing >= 0) state.notes[existing] = noteObj;
+  else state.notes.unshift(noteObj);
+
+  saveLocal();
+  renderJournals();
+  if (document.getElementById('page-notes').classList.contains('active')) renderNotes();
+  closeModal('modal-day-note');
+  syncToGistDebounced();
+}
+
+function deleteDayNote() {
+  if (!_dnHabitId || !_dnDate) return;
+  if (!confirm(lang==='en' ? 'Delete this note?' : 'Удалить эту заметку?')) return;
+  const key = dayNoteKey(_dnHabitId, _dnDate);
+  const noteId = 'dn__' + key;
+  delete state.dayNotes[key];
+  state.notes = state.notes.filter(n => n.id !== noteId);
+  saveLocal();
+  renderJournals();
+  if (document.getElementById('page-notes').classList.contains('active')) renderNotes();
+  closeModal('modal-day-note');
+  syncToGistDebounced();
+}
+
+// Char counter
+document.getElementById('day-note-input').addEventListener('input', function() {
+  const len = Math.min(this.value.length, 500);
+  this.value = this.value.slice(0, 500);
+  document.getElementById('day-note-chars').textContent = len + ' / 500';
+});
+
+// ============================================================
 // NOTES
 // ============================================================
 function openAddNote() {
@@ -1295,12 +1421,47 @@ function addDemoData(){
 // ============================================================
 // INIT
 // ============================================================
-function init(){
+async function init() {
   loadLocal();
   applyLang();
   addDemoData();
   renderJournals();
-  scheduleMidnightRefresh(); // FIX #1 — авто-обновление в 00:00
+  scheduleMidnightRefresh();
+
+  // Auto-sync from Gist on startup (if configured)
+  const { ghToken: token, gistId } = state.settings;
+  if (token && gistId) {
+    setSyncIndicator(t('syncing'), true);
+    try {
+      const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+        headers: { 'Authorization': `token ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.files['habits.json']?.content;
+        if (content) {
+          try {
+            const loaded = JSON.parse(content);
+            if (loaded.habits) state.habits = loaded.habits;
+            if (loaded.logs)   state.logs   = loaded.logs;
+            if (loaded.notes)  state.notes  = loaded.notes;
+            if (loaded.dayNotes) state.dayNotes = loaded.dayNotes;
+            if (loaded.settings) {
+              // Merge settings but keep local lang preference
+              const localLang = state.settings.lang;
+              state.settings = { ...state.settings, ...loaded.settings };
+              state.settings.lang = localLang;
+              lang = localLang;
+            }
+            saveLocal();
+            renderJournals();
+            setSyncIndicator(t('synced'), false);
+          } catch(e) { setSyncIndicator('', false); }
+        } else { setSyncIndicator(t('synced'), false); }
+      } else { setSyncIndicator(t('offline'), false); }
+    } catch(e) { setSyncIndicator(t('offline'), false); }
+    setTimeout(() => setSyncIndicator('', false), 3000);
+  }
 }
 init();
 </script>
