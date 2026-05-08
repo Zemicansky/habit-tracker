@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Habit Tracker</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%231c1c1e'/%3E%3Cpath d='M140 256 L220 340 L372 172' stroke='%2330d158' stroke-width='52' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%231c1c1e'/%3E%3Cpath d='M140 256 L220 340 L372 172' stroke='%2330d158' stroke-width='52' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
@@ -114,16 +116,16 @@ html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text
 .action-btns { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .action-btn { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 6px; border-radius: 14px; border: none; cursor: pointer; background: var(--card2); transition: transform 0.1s, opacity 0.1s; }
 .action-btn:active { transform: scale(0.93); opacity: 0.8; }
-.action-btn .ab-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.action-btn .ab-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #aeaeb2; -webkit-text-fill-color: #aeaeb2; }
 .action-btn .ab-label { font-size: 12px; color: var(--text2); font-weight: 500; }
-.ab-erase .ab-icon { background: var(--card2); }
-.ab-yes .ab-icon { background: var(--green); }
-.ab-no .ab-icon { background: var(--red); }
-.ab-skip .ab-icon { background: #636366; }
+.ab-erase .ab-icon { background: var(--card2); color: #6c757d; -webkit-text-fill-color: #6c757d; }
+.ab-yes .ab-icon { background: var(--green); color: #fff; -webkit-text-fill-color: #fff; }
+.ab-no .ab-icon { background: var(--red); color: #fff; -webkit-text-fill-color: #fff; }
+.ab-skip .ab-icon { background: #636366; color: #aeaeb2; -webkit-text-fill-color: #aeaeb2; }
 .action-bar-hint { font-size: 12px; color: var(--text3); text-align: center; margin-bottom: 8px; }
 
 /* NAV BAR OVERRIDE — when action bar open, lift bottom nav  */
-.bottom-nav { display: flex; align-items: flex-start; justify-content: space-around; padding: 10px 0 calc(var(--safe-bottom) + 10px); background: var(--card); border-top: 0.5px solid var(--border); flex-shrink: 0; position: relative; z-index: 20; }
+.bottom-nav { display: flex; align-items: flex-start; justify-content: space-around; padding: 10px 0 calc(var(--safe-bottom) + 20px); background: var(--card); border-top: 0.5px solid var(--border); flex-shrink: 0; position: relative; z-index: 20; padding-bottom: max(calc(env(safe-area-inset-bottom) + 20px), 30px); }
 .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 0 16px; min-width: 44px; min-height: 44px; justify-content: center; border: none; background: none; color: var(--text3); }
 .nav-item.active { color: var(--accent); }
 .nav-item svg { width: 24px; height: 24px; }
@@ -448,7 +450,7 @@ html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text
           <span class="setup-row-value">›</span>
         </div>
       </div>
-      <div style="padding:16px;text-align:center;"><p style="font-size:12px;color:var(--text3);">Habit Tracker v2.0</p></div>
+      <div style="padding:16px;text-align:center;"><p style="font-size:12px;color:var(--text3);">Habit Tracker v4.1</p></div>
     </div>
   </div>
 </div>
@@ -494,8 +496,8 @@ html, body { height: 100%; width: 100%; background: var(--bg); color: var(--text
       <div class="ab-icon">⇒</div>
       <span class="ab-label" data-i18n="skip">Пропуск</span>
     </button>
-    <button class="action-btn" onclick="openDayNote()" style="background:var(--card2);">
-      <div class="ab-icon" style="background:var(--blue);">📝</div>
+    <button class="action-btn ab-note" onclick="openDayNote()" style="background:var(--card2);">
+      <div class="ab-icon" style="background:#3a78c9;">📝</div>
       <span class="ab-label">Заметка</span>
     </button>
   </div>
