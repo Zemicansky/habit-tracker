@@ -38,7 +38,7 @@ html,body{height:100%;width:100%;background:var(--bg);color:var(--text);font-fam
 .header-chevron{font-size:11px;color:var(--accent);}
 
 /* SUBBAR: pills + nav */
-.sub-bar{
+.sub-bar{display:none;
   display:flex;align-items:center;justify-content:space-between;
   padding:6px 12px 5px;border-bottom:0.5px solid var(--border);flex-shrink:0;
 }
@@ -53,7 +53,7 @@ html,body{height:100%;width:100%;background:var(--bg);color:var(--text);font-fam
 /* DROPDOWN */
 .dropdown-overlay{position:fixed;inset:0;z-index:90;display:none;}
 .dropdown-overlay.open{display:block;}
-.dropdown-menu{position:fixed;z-index:100;background:#2c2c2e;border-radius:14px;box-shadow:0 16px 48px rgba(0,0,0,.7);overflow:hidden;min-width:200px;display:none;animation:ddFade .16s ease;}
+.dropdown-menu{position:fixed;z-index:100;background:#2c2c2e;border-radius:14px;box-shadow:0 16px 48px rgba(0,0,0,.7);overflow:hidden;min-width:200px;display:none;}
 @keyframes ddFade{from{opacity:0;transform:scale(.95) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .dropdown-menu.open{display:block;}
 .dd-header{padding:10px 16px 8px;font-size:13px;color:var(--text3);font-weight:500;border-bottom:.5px solid var(--border);}
@@ -253,10 +253,14 @@ html,body{height:100%;width:100%;background:var(--bg);color:var(--text);font-fam
   <!-- TOP BAR: ☰  |  This Week ▼  |  + -->
   <div class="top-bar">
     <button class="icon-btn" onclick="openJournalList()">☰</button>
-    <button class="header-title-btn" id="header-title-btn" onclick="toggleDropdown(event)">
-      <span class="header-title-text" id="header-title">Эта неделя</span>
-      <span class="header-chevron">▼</span>
-    </button>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <button class="icon-btn" onclick="changePeriod(-1)" style="font-size:18px;width:30px;height:30px">‹</button>
+      <button class="header-title-btn" id="header-title-btn" onclick="toggleDropdown(event)">
+        <span class="header-title-text" id="header-title">Эта неделя</span>
+        <span class="header-chevron">▼</span>
+      </button>
+      <button class="icon-btn" onclick="changePeriod(1)" style="font-size:18px;width:30px;height:30px">›</button>
+    </div>
     <button class="icon-btn" onclick="openAddHabit()">+</button>
   </div>
 
@@ -273,18 +277,7 @@ html,body{height:100%;width:100%;background:var(--bg);color:var(--text);font-fam
     <div class="dd-item" onclick="ddSelect('today')"><span>Today</span></div>
   </div>
 
-  <!-- SUB-BAR: Week|Month pills  +  ‹ period-label › -->
-  <div class="sub-bar">
-    <div class="view-mode-pills">
-      <button class="view-pill active" id="pill-week" onclick="setViewMode('week')">Неделя</button>
-      <button class="view-pill"        id="pill-month" onclick="setViewMode('month')">Месяц</button>
-    </div>
-    <div class="period-nav" id="period-nav">
-      <button onclick="changePeriod(-1)">‹</button>
-      <span class="period-label" id="period-label">—</span>
-      <button onclick="changePeriod(1)">›</button>
-    </div>
-  </div>
+  
 
   <!-- DAY STRIP (week only) -->
   <div class="day-strip" id="day-strip"></div>
@@ -544,7 +537,7 @@ function toggleDropdown(e){
   if(menu.classList.contains('open')){closeDropdown();return;}
   const r=document.getElementById('header-title-btn').getBoundingClientRect();
   menu.style.top=(r.bottom+6)+'px';
-  menu.style.left='50%';menu.style.transform='translateX(-50%)';
+  menu.style.left=(r.left + (r.width/2) - 110)+'px';menu.style.transform='none';
   document.getElementById('dd-check-week').style.display=viewMode==='week'?'':'none';
   document.getElementById('dd-check-month').style.display=viewMode==='month'?'':'none';
   menu.classList.add('open');ov.classList.add('open');
@@ -553,7 +546,7 @@ function closeDropdown(){document.getElementById('dropdown-menu').classList.remo
 function ddSelect(type){closeDropdown();if(type==='week')setViewMode('week');else if(type==='month')setViewMode('month');else goToday();}
 
 // ── VIEW MODE ─────────────────────────────────────────────────
-function setViewMode(mode){viewMode=mode;periodOffset=0;document.getElementById('pill-week').classList.toggle('active',mode==='week');document.getElementById('pill-month').classList.toggle('active',mode==='month');hideActionBar();renderJournals();}
+function setViewMode(mode){viewMode=mode;periodOffset=0;hideActionBar();renderJournals();}
 function changePeriod(dir){periodOffset+=dir;hideActionBar();renderJournals();}
 function goToday(){periodOffset=0;focusedDay=null;hideActionBar();renderJournals();}
 
@@ -583,8 +576,8 @@ function renderDayStrip(days){
 
 // ── RENDER JOURNALS ───────────────────────────────────────────
 function renderJournals(){
-  document.getElementById('pill-week').textContent=lang==='en'?'Week':'Неделя';
-  document.getElementById('pill-month').textContent=lang==='en'?'Month':'Месяц';
+  
+  
   if(viewMode==='week')renderWeek();else renderMonth();
 }
 
@@ -599,7 +592,7 @@ function weekLbl(){
 function renderWeek(){
   const days=getWeekDays(periodOffset),lbl=weekLbl();
   document.getElementById('header-title').textContent=lbl;
-  document.getElementById('period-label').textContent=lbl;
+  
   document.getElementById('progress-bar-row').style.display='none';
   document.getElementById('date-row').style.display='none';
   if(periodOffset===0){if(focusedDay){const inW=days.some(d=>dateKey(d)===focusedDay);if(!inW)focusedDay=null;}}
@@ -611,7 +604,7 @@ function renderMonth(){
   const days=getMonthDays(periodOffset),ref=new Date();ref.setMonth(ref.getMonth()+periodOffset);
   const lbl=t('months_short')[ref.getMonth()]+' '+ref.getFullYear();
   document.getElementById('header-title').textContent=t('this_month');
-  document.getElementById('period-label').textContent=lbl;
+  
   document.getElementById('day-strip').style.display='none';
   let done=0,missed=0;const habits=state.habits.filter(h=>!h.archived);
   habits.forEach(h=>days.forEach(d=>{const v=state.logs[h.id+'_'+dateKey(d)];if(v==='done')done++;else if(v==='missed')missed++;}));
@@ -685,8 +678,25 @@ function renderHabits(days,mode){
 // ── FILTER ────────────────────────────────────────────────────
 function setFilter(f,el){currentFilter=f;document.querySelectorAll('.filter-tag').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderJournals();}
 
+function updateTranslations(){
+  const isEn=lang==='en';
+  const map={
+    'filter-all':isEn?'All':'Все',
+    'filter-ex':isEn?'Sport':'Спорт',
+    'action-bar-hint':isEn?'Choose action':'Выберите действие',
+    'header-title':viewMode==='month'?t('this_month'):t('this_week')
+  };
+  Object.entries(map).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.textContent=val;});
+  document.querySelector('#page-notes h1').textContent=isEn?'Notes':'Заметки';
+  document.querySelector('#page-setup h1').textContent=isEn?'Settings':'Настройки';
+  document.querySelector('#nav-journals .nav-label').textContent=isEn?'Journal':'Журнал';
+  document.querySelector('#nav-trend .nav-label').textContent=isEn?'Trends':'Тренды';
+  document.querySelector('#nav-notes .nav-label').textContent=isEn?'Notes':'Заметки';
+  document.querySelector('#nav-setup .nav-label').textContent=isEn?'Settings':'Настройки';
+}
+
 // ── LANG ──────────────────────────────────────────────────────
-function setLang(l){lang=l;state.settings.lang=l;saveLocal();renderJournals();document.getElementById('lang-check-ru').style.display=l==='ru'?'':'none';document.getElementById('lang-check-en').style.display=l==='en'?'':'none';if(document.getElementById('page-trend').classList.contains('active'))renderTrend();}
+function setLang(l){lang=l;state.settings.lang=l;saveLocal();renderJournals();updateTranslations();document.getElementById('lang-check-ru').style.display=l==='ru'?'':'none';document.getElementById('lang-check-en').style.display=l==='en'?'':'none';if(document.getElementById('page-trend').classList.contains('active'))renderTrend();}
 
 // ── TREND ─────────────────────────────────────────────────────
 const PERIODS=['1m','3m','6m','1y','2y','4y'];
@@ -823,7 +833,7 @@ function addDemoData(){
 
 // ── INIT ──────────────────────────────────────────────────────
 async function init(){
-  loadLocal();addDemoData();renderJournals();
+  loadLocal();addDemoData();renderJournals();updateTranslations();
   document.getElementById('lang-check-ru').style.display=lang==='ru'?'':'none';
   document.getElementById('lang-check-en').style.display=lang==='en'?'':'none';
   const{ghToken:token,gistId}=state.settings;
