@@ -8,15 +8,17 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
-  --bg:#1c1c1e; --card:#2c2c2e; --card2:#3a3a3c;
+  --bg:#323235; --card:#2c2c2e; --card2:#3a3a3c;
   --text:#fff; --text2:#aeaeb2; --text3:#636366;
-  --accent:#f5a623; --green:#34c759; --red:#ff3b30; --gray-cell:#48484a;
+  --accent:#f5a623; --green:#50D167; --red:#FF4B4B; --gray-cell:#48484a;
   --border:#38383a;
   --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;width:100%;background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro Display','Helvetica Neue',sans-serif;overflow:hidden;overscroll-behavior:none;}
-#app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;position:relative;}
+html,body{height:100%;width:100%;background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro Display','Helvetica Neue',sans-serif;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:none;}
+html{position:fixed;top:0;left:0;right:0;bottom:0;}
+body{position:fixed;top:0;left:0;right:0;bottom:0;}
+#app{display:flex;flex-direction:column;height:100%;width:100%;max-width:430px;margin:0 auto;position:relative;background:var(--bg);}
 .page{display:none;flex:1;flex-direction:column;overflow:hidden;}
 .page.active{display:flex;}
 .scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:20px;}
@@ -113,7 +115,7 @@ html,body{height:100%;width:100%;background:var(--bg);color:var(--text);font-fam
 .day-cell{height:34px;border-radius:7px;background:var(--gray-cell);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:background .15s,transform .1s;}
 .day-cell.done{background:var(--green);}
 .day-cell.missed{background:var(--red);}
-.day-cell.skipped{background:#636366;}
+.day-cell.skipped{background:#48484a;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.07) 0px,rgba(255,255,255,0.07) 3px,transparent 3px,transparent 9px);}
 .day-cell.future{opacity:.28;cursor:default;}
 .day-cell.today{box-shadow:0 0 0 2px var(--accent);}
 .day-cell.selected-col{box-shadow:0 0 0 2px rgba(245,166,35,.45);}
@@ -124,7 +126,7 @@ html,body{height:100%;width:100%;background:var(--bg);color:var(--text);font-fam
 .month-cell{width:28px;height:28px;border-radius:5px;background:var(--gray-cell);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;}
 .month-cell.done{background:var(--green);}
 .month-cell.missed{background:var(--red);}
-.month-cell.skipped{background:#636366;}
+.month-cell.skipped{background:#48484a;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.07) 0px,rgba(255,255,255,0.07) 2px,transparent 2px,transparent 7px);}
 .month-cell.future{opacity:.22;cursor:default;}
 .month-cell.today{box-shadow:0 0 0 2px var(--accent);}
 .month-cell .dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.22);}
@@ -138,11 +140,11 @@ html,body{height:100%;width:100%;background:var(--bg);color:var(--text);font-fam
 .action-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px;border-radius:14px;border:none;cursor:pointer;background:var(--card2);transition:transform .1s;}
 .action-btn:active{transform:scale(.93);}
 .action-btn .ab-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--card2);}
-.ab-yes .ab-icon{background:var(--green);}
-.ab-no .ab-icon{background:var(--red);}
-.ab-skip .ab-icon{background:#636366;}
-.ab-note .ab-icon{background:#3a78c9;}
-.action-btn .ab-label{font-size:12px;color:var(--text2);font-weight:500;}
+.ab-yes .ab-icon{background:#3EAD52;}
+.ab-no .ab-icon{background:#787878;}
+.ab-skip .ab-icon{background:#6B8FA8;}
+.ab-note .ab-icon{background:#E8943A;}
+.ab-erase .ab-icon{background:#4A3F3F;}
 .action-bar-hint{font-size:12px;color:var(--text3);text-align:center;margin-bottom:8px;}
 
 /* BOTTOM NAV */
@@ -352,11 +354,14 @@ html,body{height:100%;width:100%;background:var(--bg);color:var(--text);font-fam
       </div>
       <div class="setup-group">
         <div style="padding:14px 16px">
-          <div style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:12px">☁️ GitHub Gist</div>
+          <div style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:12px">☁️ GitHub Gist — Синхронизация</div>
           <div class="form-group"><label>GitHub Token</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off"></div>
-          <div class="form-group"><label>Gist ID</label><input type="text" id="gh-gist-id" placeholder="abc123def456..."></div>
-          <button class="btn btn-primary" onclick="saveGistSettings()" style="margin-bottom:8px">💾 Сохранить и подключить</button>
-          <button class="btn btn-ghost"   onclick="syncToGist()">🔄 Синхронизировать</button>
+          <div class="form-group"><label>Gist ID</label><input type="text" id="gh-gist-id" placeholder="оставьте пустым для создания нового"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <button class="btn btn-primary" onclick="gistUpload()" style="font-size:13px;padding:10px 6px">📤 Выгрузить</button>
+            <button class="btn btn-ghost"   onclick="gistDownload()" style="font-size:13px;padding:10px 6px">📥 Загрузить</button>
+          </div>
+          <button class="btn btn-ghost" onclick="gistCreate()" style="margin-bottom:8px;font-size:13px">✨ Создать новый Gist</button>
           <div class="gist-status" id="gist-status"></div>
         </div>
       </div>
@@ -395,7 +400,7 @@ html,body{height:100%;width:100%;background:var(--bg);color:var(--text);font-fam
 <div class="action-bar" id="action-bar">
   <div class="action-bar-hint" id="action-bar-hint">Выберите действие</div>
   <div class="action-btns">
-    <button class="action-btn"      onclick="applyAction('erase')">  <div class="ab-icon">✕</div><span class="ab-label">Стереть</span></button>
+    <button class="action-btn ab-erase"  onclick="applyAction('erase')">  <div class="ab-icon">✕</div><span class="ab-label">Стереть</span></button>
     <button class="action-btn ab-yes" onclick="applyAction('done')"> <div class="ab-icon">✓</div><span class="ab-label">Да</span></button>
     <button class="action-btn ab-no"  onclick="applyAction('missed')"><div class="ab-icon">✕</div><span class="ab-label">Нет</span></button>
     <button class="action-btn ab-skip" onclick="applyAction('skipped')"><div class="ab-icon">⇒</div><span class="ab-label">Пропуск</span></button>
@@ -485,7 +490,26 @@ const I18N={
        no_notes:'Нет заметок', add_note:'Нажмите + чтобы добавить заметку',
        archived_label:'Активные', archived:'В архиве', restore:'Восстановить',
        syncing:'Синхронизация...', synced:'Синхронизировано ✓', sync_err:'Ошибка', offline:'Оффлайн',
-       period_1m:'1 мес', period_3m:'3 мес', period_6m:'6 мес', period_1y:'1 год', period_2y:'2 года', period_4y:'4 года' },
+       period_1m:'1 мес', period_3m:'3 мес', period_6m:'6 мес', period_1y:'1 год', period_2y:'2 года', period_4y:'4 года',
+       btn_erase:'Стереть', btn_yes:'Да', btn_no:'Нет', btn_skip:'Пропуск', btn_note:'Заметка',
+       btn_save:'Сохранить', btn_cancel:'Отмена', btn_delete:'Удалить привычку',
+       btn_delete_note:'Удалить заметку', choose_action:'Выберите действие',
+       new_habit:'Новая привычка', edit_habit:'Редактировать',
+       label_name:'Название', label_tag:'Тег', label_goal:'Цель (опционально)',
+       ph_name:'Например: Читать 20 минут', ph_goal:'Например: 30 раз / каждый день',
+       ph_day_note:'Запишите заметку...', ph_note:'Запишите мысль...',
+       modal_all_habits:'Все привычки', modal_note_title:'Заметка',
+       tag_none:'Нет', tag_sport:'Спорт', tag_mind:'Разум', tag_health:'Здоровье',
+       tag_work:'Работа', tag_school:'Учёба', tag_family:'Семья', tag_prod:'Продуктивность',
+       ctx_edit:'✏️ Редактировать', ctx_archive:'📦 В архив', ctx_delete:'🗑 Удалить', ctx_cancel:'Отмена',
+       nav_journal:'Журнал', nav_trends:'Тренды', nav_notes:'Заметки', nav_settings:'Настройки',
+       page_notes:'Заметки', page_settings:'Настройки',
+       filter_all:'Все', filter_sport:'Спорт',
+       gist_save:'💾 Сохранить и подключить', gist_sync:'🔄 Синхронизировать',
+       dd_calendar:'Календарь', dd_week:'Неделя', dd_month:'Месяц', dd_today:'Сегодня',
+       setting_sound:'🔊 Звуковые эффекты', setting_chains:'⛓ Цепочки (стрики)',
+       export_data:'📤 Экспорт (JSON)', import_data:'📥 Импорт', clear_data:'🗑 Очистить все данные',
+       success_pct:'Успех', streak_label:'Стрик', summarize_all:'Summarize All' },
   en:{ months_short:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
        days_short:['Su','Mo','Tu','We','Th','Fr','Sa'], days_week:['Mo','Tu','We','Th','Fr','Sa','Su'],
        this_week:'This Week', last_week:'Last Week', this_month:'This Month',
@@ -494,7 +518,26 @@ const I18N={
        no_notes:'No notes', add_note:'Tap + to add a note',
        archived_label:'Active', archived:'Archived', restore:'Restore',
        syncing:'Syncing...', synced:'Synced ✓', sync_err:'Sync error', offline:'Offline',
-       period_1m:'1m', period_3m:'3m', period_6m:'6m', period_1y:'1y', period_2y:'2y', period_4y:'4y' }
+       period_1m:'1m', period_3m:'3m', period_6m:'6m', period_1y:'1y', period_2y:'2y', period_4y:'4y',
+       btn_erase:'Erase', btn_yes:'Yes', btn_no:'No', btn_skip:'Skip', btn_note:'Note',
+       btn_save:'Save', btn_cancel:'Cancel', btn_delete:'Delete habit',
+       btn_delete_note:'Delete note', choose_action:'Choose action',
+       new_habit:'New habit', edit_habit:'Edit',
+       label_name:'Name', label_tag:'Tag', label_goal:'Goal (optional)',
+       ph_name:'E.g.: Read 20 minutes', ph_goal:'E.g.: 30 times / every day',
+       ph_day_note:'Write a note...', ph_note:'Write a thought...',
+       modal_all_habits:'All habits', modal_note_title:'Note',
+       tag_none:'None', tag_sport:'Sport', tag_mind:'Mind', tag_health:'Health',
+       tag_work:'Work', tag_school:'School', tag_family:'Family', tag_prod:'Productivity',
+       ctx_edit:'✏️ Edit', ctx_archive:'📦 Archive', ctx_delete:'🗑 Delete', ctx_cancel:'Cancel',
+       nav_journal:'Journal', nav_trends:'Trends', nav_notes:'Notes', nav_settings:'Settings',
+       page_notes:'Notes', page_settings:'Settings',
+       filter_all:'All', filter_sport:'Sport',
+       gist_save:'💾 Save & connect', gist_sync:'🔄 Sync',
+       dd_calendar:'Calendar', dd_week:'Week', dd_month:'Month', dd_today:'Today',
+       setting_sound:'🔊 Sound effects', setting_chains:'⛓ Chains (streaks)',
+       export_data:'📤 Export (JSON)', import_data:'📥 Import', clear_data:'🗑 Clear all data',
+       success_pct:'Success', streak_label:'Streak', summarize_all:'Summarize All' }
 };
 function t(k){ return (I18N[lang]||I18N.ru)[k]||k; }
 
@@ -679,20 +722,78 @@ function renderHabits(days,mode){
 function setFilter(f,el){currentFilter=f;document.querySelectorAll('.filter-tag').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderJournals();}
 
 function updateTranslations(){
-  const isEn=lang==='en';
-  const map={
-    'filter-all':isEn?'All':'Все',
-    'filter-ex':isEn?'Sport':'Спорт',
-    'action-bar-hint':isEn?'Choose action':'Выберите действие',
-    'header-title':viewMode==='month'?t('this_month'):t('this_week')
-  };
-  Object.entries(map).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.textContent=val;});
-  document.querySelector('#page-notes h1').textContent=isEn?'Notes':'Заметки';
-  document.querySelector('#page-setup h1').textContent=isEn?'Settings':'Настройки';
-  document.querySelector('#nav-journals .nav-label').textContent=isEn?'Journal':'Журнал';
-  document.querySelector('#nav-trend .nav-label').textContent=isEn?'Trends':'Тренды';
-  document.querySelector('#nav-notes .nav-label').textContent=isEn?'Notes':'Заметки';
-  document.querySelector('#nav-setup .nav-label').textContent=isEn?'Settings':'Настройки';
+  // Nav labels
+  document.querySelector('#nav-journals .nav-label').textContent=t('nav_journal');
+  document.querySelector('#nav-trend .nav-label').textContent=t('nav_trends');
+  document.querySelector('#nav-notes .nav-label').textContent=t('nav_notes');
+  document.querySelector('#nav-setup .nav-label').textContent=t('nav_settings');
+  // Page headers
+  document.querySelector('#page-notes h1').textContent=t('page_notes');
+  document.querySelector('#page-setup h1').textContent=t('page_settings');
+  // Filter bar
+  const fa=document.getElementById('filter-all');if(fa)fa.textContent=t('filter_all');
+  const fe=document.getElementById('filter-ex');if(fe)fe.textContent=t('filter_sport');
+  // Action bar hint (only if not showing a habit name)
+  const ah=document.getElementById('action-bar-hint');if(ah&&!selectedHabitId)ah.textContent=t('choose_action');
+  // Action bar buttons
+  const abBtns=document.querySelectorAll('#action-bar .ab-label');
+  if(abBtns[0])abBtns[0].textContent=t('btn_erase');
+  if(abBtns[1])abBtns[1].textContent=t('btn_yes');
+  if(abBtns[2])abBtns[2].textContent=t('btn_no');
+  if(abBtns[3])abBtns[3].textContent=t('btn_skip');
+  if(abBtns[4])abBtns[4].textContent=t('btn_note');
+  // Dropdown
+  const ddh=document.querySelector('#dropdown-menu .dd-header');if(ddh)ddh.textContent=t('dd_calendar');
+  const ddItems=document.querySelectorAll('#dropdown-menu .dd-item span:first-child');
+  if(ddItems[0])ddItems[0].textContent=t('dd_week');
+  if(ddItems[1])ddItems[1].textContent=t('dd_month');
+  if(ddItems[2])ddItems[2].textContent=t('dd_today');
+  // Header title
+  const ht=document.getElementById('header-title');if(ht)ht.textContent=viewMode==='month'?t('this_month'):(periodOffset===0?t('this_week'):ht.textContent);
+  // Modal: day note buttons
+  const dnSave=document.querySelector('#modal-day-note .btn-primary');if(dnSave)dnSave.textContent=t('btn_save');
+  const dnDel=document.getElementById('day-note-delete-btn');if(dnDel)dnDel.textContent=t('btn_delete_note');
+  const dnCancel=document.querySelector('#modal-day-note .btn-ghost');if(dnCancel)dnCancel.textContent=t('btn_cancel');
+  const dnPh=document.getElementById('day-note-input');if(dnPh)dnPh.placeholder=t('ph_day_note');
+  // Modal: add/edit habit
+  const hSave=document.querySelector('#modal-habit .btn-primary');if(hSave)hSave.textContent=t('btn_save');
+  const hDel=document.getElementById('btn-delete-habit');if(hDel)hDel.textContent=t('btn_delete');
+  const hCancel=document.querySelector('#modal-habit .btn-ghost');if(hCancel)hCancel.textContent=t('btn_cancel');
+  const hnInput=document.getElementById('habit-name-input');if(hnInput)hnInput.placeholder=t('ph_name');
+  const hgInput=document.getElementById('habit-goal-input');if(hgInput)hgInput.placeholder=t('ph_goal');
+  // Modal habit form labels
+  const formLabels=document.querySelectorAll('#modal-habit .form-group label');
+  if(formLabels[0])formLabels[0].textContent=t('label_name');
+  if(formLabels[1])formLabels[1].textContent=t('label_tag');
+  if(formLabels[2])formLabels[2].textContent=t('label_goal');
+  // Tag options
+  const tagMap={'':[t('tag_none')],'Exercising':[t('tag_sport')],'Mind':[t('tag_mind')],'Health':[t('tag_health')],'Work':[t('tag_work')],'School':[t('tag_school')],'Family':[t('tag_family')],'Productivity':[t('tag_prod')]};
+  document.querySelectorAll('#tag-grid .tag-option').forEach(btn=>{const tg=tagMap[btn.dataset.tag];if(tg)btn.textContent=tg[0];});
+  // Modal: journal list
+  const mjh=document.querySelector('#modal-journals h2');if(mjh)mjh.textContent=t('modal_all_habits');
+  // Modal: note
+  const mnh=document.querySelector('#modal-note h2');if(mnh)mnh.textContent=t('modal_note_title');
+  const mnSave=document.querySelector('#modal-note .btn-primary');if(mnSave)mnSave.textContent=t('btn_save');
+  const mnCancel=document.querySelector('#modal-note .btn-ghost');if(mnCancel)mnCancel.textContent=t('btn_cancel');
+  const mnPh=document.getElementById('note-input');if(mnPh)mnPh.placeholder=t('ph_note');
+  // Context menu
+  const ctxItems=document.querySelectorAll('#context-menu .context-item');
+  if(ctxItems[0])ctxItems[0].textContent=t('ctx_edit');
+  if(ctxItems[1])ctxItems[1].textContent=t('ctx_archive');
+  if(ctxItems[2])ctxItems[2].textContent=t('ctx_delete');
+  if(ctxItems[3])ctxItems[3].textContent=t('ctx_cancel');
+  // Setup page rows
+  const setupRows=document.querySelectorAll('.setup-row span:first-child');
+  if(setupRows[0])setupRows[0].textContent=t('setting_sound');
+  if(setupRows[1])setupRows[1].textContent=t('setting_chains');
+  if(setupRows[2])setupRows[2].innerHTML=t('export_data');
+  if(setupRows[3])setupRows[3].innerHTML=t('import_data');
+  if(setupRows[4])setupRows[4].innerHTML='<span style="color:var(--red)">'+t('clear_data')+'</span>';
+  // Gist buttons — 3 buttons now: upload, download, create
+  const gistBtns=document.querySelectorAll('#page-setup .setup-group .btn');
+  if(gistBtns[0])gistBtns[0].textContent=lang==='en'?'📤 Upload':'📤 Выгрузить';
+  if(gistBtns[1])gistBtns[1].textContent=lang==='en'?'📥 Download':'📥 Загрузить';
+  if(gistBtns[2])gistBtns[2].textContent=lang==='en'?'✨ Create new Gist':'✨ Создать новый Gist';
 }
 
 // ── LANG ──────────────────────────────────────────────────────
@@ -713,14 +814,14 @@ function renderTrend(){
   const tot=td+tm+ts,pct=tot>0?Math.round(td/tot*100):0;
   let bestStr=0;
   if(trendHabitId!=='all'){let cur=0;Object.keys(logs).map(k=>k.split('_').slice(1).join('_')).filter(ds=>ds>=psk).sort().forEach(ds=>{if(state.logs[trendHabitId+'_'+ds]==='done'){cur++;bestStr=Math.max(bestStr,cur);}else cur=0;});}
-  document.getElementById('tr-habit-title').textContent=selH?selH.name:(lang==='en'?'All habits':'Все привычки');
+  document.getElementById('tr-habit-title').textContent=selH?selH.name:t('summarize_all');  
   const loc=lang==='en'?'en-GB':'ru-RU';
   document.getElementById('tr-date-range').textContent=pS.toLocaleDateString(loc,{day:'numeric',month:'short',year:'numeric'})+' — '+now.toLocaleDateString(loc,{day:'numeric',month:'short'});
   const pp=document.getElementById('period-pills');pp.innerHTML='';
   PERIODS.forEach(p=>{const b=document.createElement('button');b.className='period-pill'+(trendPeriod===p?' active':'');b.textContent=t('period_'+p);b.onclick=()=>{trendPeriod=p;renderTrend();};pp.appendChild(b);});
   const sr=document.getElementById('stats-row');
   if(trendHabitId==='all')sr.innerHTML=`<div class="stat-card"><div class="stat-num green">${td}</div><div style="font-size:10px;color:var(--text3)">${t('completed')}</div></div><div class="stat-card"><div class="stat-num red">${tm}</div><div style="font-size:10px;color:var(--text3)">${t('missed')}</div></div><div class="stat-card"><div class="stat-num accent">${state.habits.filter(h=>!h.archived).length}</div><div style="font-size:10px;color:var(--text3)">${t('habits')}</div></div>`;
-  else sr.innerHTML=`<div class="stat-card"><div class="stat-num green">${td}</div><div style="font-size:10px;color:var(--text3)">${t('completed')}</div></div><div class="stat-card"><div class="stat-num red">${tm}</div><div style="font-size:10px;color:var(--text3)">${t('missed')}</div></div><div class="stat-card"><div class="stat-num accent">${pct}%</div><div style="font-size:10px;color:var(--text3)">Успех</div></div><div class="stat-card"><div class="stat-num accent">${bestStr}</div><div style="font-size:10px;color:var(--text3)">Стрик</div></div>`;
+  else sr.innerHTML=`<div class="stat-card"><div class="stat-num green">${td}</div><div style="font-size:10px;color:var(--text3)">${t('completed')}</div></div><div class="stat-card"><div class="stat-num red">${tm}</div><div style="font-size:10px;color:var(--text3)">${t('missed')}</div></div><div class="stat-card"><div class="stat-num accent">${pct}%</div><div style="font-size:10px;color:var(--text3)">${t('success_pct')}</div></div><div class="stat-card"><div class="stat-num accent">${bestStr}</div><div style="font-size:10px;color:var(--text3)">${t('streak_label')}</div></div>`;
   const months=t('months_short'),labels=[],dones=[],misses=[];
   if(useY){const yrs=trendPeriod==='4y'?4:2;for(let i=yrs-1;i>=0;i--){const y=now.getFullYear()-i,yS=y+'-01-01',yE=y+'-12-31';labels.push(String(y));let md=0,mm=0;Object.entries(logs).forEach(([k,v])=>{const ds=k.split('_').slice(1).join('_');if(ds>=yS&&ds<=yE){if(v==='done')md++;else if(v==='missed')mm++;}});dones.push(md);misses.push(mm);}}
   else{for(let i=pm-1;i>=0;i--){const ref=new Date(now.getFullYear(),now.getMonth()-i,1),m=ref.getMonth(),y=ref.getFullYear(),pfx=y+'-'+String(m+1).padStart(2,'0');labels.push(months[m]+(pm>12?' '+y:''));let md=0,mm=0;Object.entries(logs).forEach(([k,v])=>{const ds=k.split('_').slice(1).join('_');if(ds.startsWith(pfx)){if(v==='done')md++;else if(v==='missed')mm++;}});dones.push(md);misses.push(mm);}}
@@ -729,7 +830,7 @@ function renderTrend(){
   if(trendChartType==='bar')mainTrendChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:t('completed'),data:dones,backgroundColor:'#34c759',borderRadius:5},{label:t('missed'),data:misses,backgroundColor:'#ff3b30',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#aeaeb2',font:{size:11}}}},scales:{x:{ticks:{color:'#636366',font:{size:11}},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#636366',font:{size:11}},grid:{color:'rgba(255,255,255,.05)'}}}}});
   else{const ne=ts>0?ts:(tot===0?1:0);mainTrendChart=new Chart(ctx,{type:'pie',data:{labels:[t('completed')+' ('+td+')',t('missed')+' ('+tm+')','Neutral ('+ne+')'],datasets:[{data:[td,tm,ne],backgroundColor:['#34c759','#ff3b30','#3a3a3c'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#aeaeb2',padding:14,font:{size:12}}}}}});}
   const list=document.getElementById('trend-habit-list');list.innerHTML='';
-  const sumRow=document.createElement('div');sumRow.className='trend-habit-item'+(trendHabitId==='all'?' active-h':'');sumRow.innerHTML=`<div class="th-dot${trendHabitId==='all'?' g':''}"></div><span class="th-summarize">Summarize All</span>`;sumRow.onclick=()=>{trendHabitId='all';renderTrend();};list.appendChild(sumRow);
+  const sumRow=document.createElement('div');sumRow.className='trend-habit-item'+(trendHabitId==='all'?' active-h':'');sumRow.innerHTML=`<div class="th-dot${trendHabitId==='all'?' g':''}"></div><span class="th-summarize">${t('summarize_all')}</span>`;sumRow.onclick=()=>{trendHabitId='all';renderTrend();};list.appendChild(sumRow);
   state.habits.filter(h=>!h.archived).forEach(h=>{const lhP=logsFor(h.id),hd=Object.values(lhP).filter(v=>v==='done').length;const row=document.createElement('div');row.className='trend-habit-item'+(trendHabitId===h.id?' active-h':'');row.innerHTML=`<div class="th-dot${hd>0?' g':''}"></div><span class="th-name">${h.name}</span>`;row.onclick=()=>{trendHabitId=h.id;renderTrend();};list.appendChild(row);});
 }
 
@@ -772,8 +873,8 @@ function renderNotes(){const list=document.getElementById('notes-list');if(!stat
 function deleteNote(id){if(!confirm('Удалить заметку?'))return;state.notes=state.notes.filter(n=>n.id!==id);saveLocal();renderNotes();}
 
 // ── HABIT MODAL ───────────────────────────────────────────────
-function openAddHabit(){editingHabitId=null;document.getElementById('modal-habit-title').textContent=lang==='en'?'New habit':'Новая привычка';document.getElementById('habit-name-input').value='';document.getElementById('habit-goal-input').value='';document.getElementById('btn-delete-habit').style.display='none';selectedTag='';updateTagUI('');openModal('modal-habit');setTimeout(()=>document.getElementById('habit-name-input').focus(),300);}
-function openEditHabit(id){const h=state.habits.find(h=>h.id===id);if(!h)return;editingHabitId=id;document.getElementById('modal-habit-title').textContent=lang==='en'?'Edit':'Редактировать';document.getElementById('habit-name-input').value=h.name;document.getElementById('habit-goal-input').value=h.goal||'';document.getElementById('btn-delete-habit').style.display='block';selectedTag=h.tag||'';updateTagUI(selectedTag);openModal('modal-habit');}
+function openAddHabit(){editingHabitId=null;document.getElementById('modal-habit-title').textContent=t('new_habit');document.getElementById('habit-name-input').value='';document.getElementById('habit-goal-input').value='';document.getElementById('btn-delete-habit').style.display='none';selectedTag='';updateTagUI('');openModal('modal-habit');setTimeout(()=>document.getElementById('habit-name-input').focus(),300);}
+function openEditHabit(id){const h=state.habits.find(h=>h.id===id);if(!h)return;editingHabitId=id;document.getElementById('modal-habit-title').textContent=t('edit_habit');document.getElementById('habit-name-input').value=h.name;document.getElementById('habit-goal-input').value=h.goal||'';document.getElementById('btn-delete-habit').style.display='block';selectedTag=h.tag||'';updateTagUI(selectedTag);openModal('modal-habit');}
 function updateTagUI(tag){document.querySelectorAll('#tag-grid .tag-option').forEach(btn=>btn.classList.toggle('selected',btn.dataset.tag===tag));}
 document.querySelectorAll('#tag-grid .tag-option').forEach(btn=>btn.addEventListener('click',()=>{selectedTag=btn.dataset.tag;updateTagUI(selectedTag);}));
 function saveHabit(){const name=document.getElementById('habit-name-input').value.trim();if(!name){document.getElementById('habit-name-input').focus();return;}const goal=document.getElementById('habit-goal-input').value.trim();if(editingHabitId){const h=state.habits.find(h=>h.id===editingHabitId);if(h){h.name=name;h.tag=selectedTag;h.goal=goal;}}else state.habits.push({id:Date.now().toString(),name,tag:selectedTag,goal,archived:false,createdAt:new Date().toISOString()});saveLocal();renderJournals();closeModal('modal-habit');syncToGistDebounced();}
@@ -798,13 +899,103 @@ function ctxDelete(){if(!confirm('Удалить эту привычку?'))retu
 document.addEventListener('click',e=>{if(!e.target.closest('#context-menu'))closeContextMenu();});
 
 // ── SETUP ─────────────────────────────────────────────────────
-function renderSetup(){document.getElementById('toggle-sound').className='toggle'+(state.settings.sound?' on':'');document.getElementById('toggle-chains').className='toggle'+(state.settings.chains?' on':'');document.getElementById('gh-token').value=state.settings.ghToken||'';document.getElementById('gh-gist-id').value=state.settings.gistId||'';document.getElementById('lang-check-ru').style.display=lang==='ru'?'':'none';document.getElementById('lang-check-en').style.display=lang==='en'?'':'none';}
+function renderSetup(){document.getElementById('toggle-sound').className='toggle'+(state.settings.sound?' on':'');document.getElementById('toggle-chains').className='toggle'+(state.settings.chains?' on':'');const t2=document.getElementById('gh-token');if(t2)t2.value=state.settings.ghToken||'';const g2=document.getElementById('gh-gist-id');if(g2)g2.value=state.settings.gistId||'';document.getElementById('lang-check-ru').style.display=lang==='ru'?'':'none';document.getElementById('lang-check-en').style.display=lang==='en'?'':'none';}
 function toggleSetting(key){state.settings[key]=!state.settings[key];saveLocal();renderSetup();}
 
 // ── GIST ──────────────────────────────────────────────────────
-async function saveGistSettings(){const token=document.getElementById('gh-token').value.trim(),gistId=document.getElementById('gh-gist-id').value.trim();state.settings.ghToken=token;state.settings.gistId=gistId;saveLocal();if(!token){showGistStatus('Введите токен','err');return;}if(!gistId){showGistStatus('Создаём...','loading');try{const res=await fetch('https://api.github.com/gists',{method:'POST',headers:{'Authorization':`token ${token}`,'Content-Type':'application/json'},body:JSON.stringify({description:'Habit Tracker',public:false,files:{'habits.json':{content:JSON.stringify(state,null,2)}}})});const data=await res.json();if(data.id){state.settings.gistId=data.id;document.getElementById('gh-gist-id').value=data.id;saveLocal();showGistStatus('✅ '+data.id,'ok');}else showGistStatus('Ошибка','err');}catch(e){showGistStatus('Ошибка сети','err');}}else{showGistStatus('Проверяем...','loading');try{const res=await fetch(`https://api.github.com/gists/${gistId}`,{headers:{'Authorization':`token ${token}`}});if(res.ok)showGistStatus('✅ Подключено!','ok');else showGistStatus('Ошибка '+res.status,'err');}catch(e){showGistStatus('Ошибка сети','err');}}}
-async function syncToGist(){const{ghToken:token,gistId}=state.settings;if(!token||!gistId)return;setSyncIndicator(t('syncing'),true);try{const res=await fetch(`https://api.github.com/gists/${gistId}`,{method:'PATCH',headers:{'Authorization':`token ${token}`,'Content-Type':'application/json'},body:JSON.stringify({files:{'habits.json':{content:JSON.stringify(state,null,2)}}})});setSyncIndicator(res.ok?t('synced'):t('sync_err'),false);}catch(e){setSyncIndicator(t('offline'),false);}setTimeout(()=>setSyncIndicator('',false),3000);}
-let gistTimer=null;function syncToGistDebounced(){clearTimeout(gistTimer);gistTimer=setTimeout(syncToGist,2000);}
+function _gistCreds(){
+  const token=(document.getElementById('gh-token').value||'').trim()||state.settings.ghToken||'';
+  const gistId=(document.getElementById('gh-gist-id').value||'').trim()||state.settings.gistId||'';
+  // persist latest input
+  if(token){state.settings.ghToken=token;document.getElementById('gh-token').value=token;}
+  if(gistId){state.settings.gistId=gistId;document.getElementById('gh-gist-id').value=gistId;}
+  saveLocal();
+  return{token,gistId};
+}
+async function saveToGist(token,gistId,data){
+  if(!token)throw new Error('NO_TOKEN');
+  if(!gistId)throw new Error('NO_GIST');
+  const res=await fetch(`https://api.github.com/gists/${gistId}`,{method:'PATCH',
+    headers:{'Authorization':`token ${token}`,'Content-Type':'application/json'},
+    body:JSON.stringify({files:{'habits-data.json':{content:JSON.stringify(data,null,2)}}})});
+  if(res.status===401)throw new Error('AUTH');
+  if(res.status===404)throw new Error('NOT_FOUND');
+  if(!res.ok)throw new Error('ERR_'+res.status);
+  return await res.json();
+}
+async function loadFromGist(token,gistId){
+  if(!token)throw new Error('NO_TOKEN');
+  if(!gistId)throw new Error('NO_GIST');
+  const res=await fetch(`https://api.github.com/gists/${gistId}`,{
+    headers:{'Authorization':`token ${token}`}});
+  if(res.status===401)throw new Error('AUTH');
+  if(res.status===404)throw new Error('NOT_FOUND');
+  if(!res.ok)throw new Error('ERR_'+res.status);
+  const data=await res.json();
+  const fileContent=data.files['habits-data.json']?.content||data.files['habits.json']?.content;
+  if(!fileContent)throw new Error('NO_FILE');
+  return JSON.parse(fileContent);
+}
+async function createNewGist(token,data){
+  if(!token)throw new Error('NO_TOKEN');
+  const res=await fetch('https://api.github.com/gists',{method:'POST',
+    headers:{'Authorization':`token ${token}`,'Content-Type':'application/json'},
+    body:JSON.stringify({description:'Habit Tracker Data',public:false,
+      files:{'habits-data.json':{content:JSON.stringify(data,null,2)}}})});
+  if(res.status===401)throw new Error('AUTH');
+  if(!res.ok)throw new Error('ERR_'+res.status);
+  return await res.json();
+}
+function _gistErrMsg(e){
+  if(!navigator.onLine)return'🚫 Нет соединения';
+  if(e.message==='AUTH')return'🔑 Ошибка авторизации';
+  if(e.message==='NOT_FOUND')return'❌ Gist не найден';
+  if(e.message==='NO_TOKEN')return'⚠️ Введите GitHub Token';
+  if(e.message==='NO_GIST')return'⚠️ Введите Gist ID';
+  if(e.message==='NO_FILE')return'⚠️ Файл habits-data.json не найден в Gist';
+  return'❌ Ошибка: '+e.message;
+}
+async function gistUpload(){
+  const{token,gistId}=_gistCreds();
+  showGistStatus('Выгружаем...','loading');
+  try{
+    const payload={habits:state.habits,logs:state.logs,notes:state.notes,dayNotes:state.dayNotes,settings:state.settings};
+    await saveToGist(token,gistId,payload);
+    showGistStatus('✅ Данные выгружены в Gist','ok');
+  }catch(e){showGistStatus(_gistErrMsg(e),'err');}
+}
+async function gistDownload(){
+  const{token,gistId}=_gistCreds();
+  showGistStatus('Загружаем...','loading');
+  try{
+    const data=await loadFromGist(token,gistId);
+    if(data.habits)state.habits=data.habits;
+    if(data.logs)state.logs=data.logs;
+    if(data.notes)state.notes=data.notes;
+    if(data.dayNotes)state.dayNotes=data.dayNotes;
+    if(data.settings){const loc=state.settings.lang;state.settings={...state.settings,...data.settings};state.settings.lang=loc;lang=loc;}
+    saveLocal();renderJournals();
+    showGistStatus('✅ Данные загружены из Gist','ok');
+  }catch(e){showGistStatus(_gistErrMsg(e),'err');}
+}
+async function gistCreate(){
+  const token=(document.getElementById('gh-token').value||'').trim()||state.settings.ghToken||'';
+  if(!token){showGistStatus('⚠️ Введите GitHub Token','err');return;}
+  showGistStatus('Создаём Gist...','loading');
+  try{
+    const payload={habits:state.habits,logs:state.logs,notes:state.notes,dayNotes:state.dayNotes,settings:state.settings};
+    const result=await createNewGist(token,payload);
+    state.settings.gistId=result.id;state.settings.ghToken=token;
+    document.getElementById('gh-gist-id').value=result.id;
+    document.getElementById('gh-token').value=token;
+    saveLocal();
+    showGistStatus('✅ Gist создан: '+result.id,'ok');
+  }catch(e){showGistStatus(_gistErrMsg(e),'err');}
+}
+// Keep legacy saveGistSettings for backward compat (called from updateTranslations btn references)
+async function saveGistSettings(){await gistUpload();}
+async function syncToGist(){await gistUpload();}
+let gistTimer=null;function syncToGistDebounced(){clearTimeout(gistTimer);gistTimer=setTimeout(async()=>{const{token,gistId}=_gistCreds();if(!token||!gistId)return;setSyncIndicator(t('syncing'),true);try{const payload={habits:state.habits,logs:state.logs,notes:state.notes,dayNotes:state.dayNotes,settings:state.settings};await saveToGist(token,gistId,payload);setSyncIndicator(t('synced'),false);}catch(e){setSyncIndicator(t('offline'),false);}setTimeout(()=>setSyncIndicator('',false),3000);},2000);}
 function setSyncIndicator(msg,loading){const el=document.getElementById('sync-indicator');el.textContent=msg;el.className='sync-indicator'+(loading?' syncing':'');}
 function showGistStatus(msg,type){const el=document.getElementById('gist-status');el.textContent=msg;el.className='gist-status '+type;}
 
@@ -837,7 +1028,7 @@ async function init(){
   document.getElementById('lang-check-ru').style.display=lang==='ru'?'':'none';
   document.getElementById('lang-check-en').style.display=lang==='en'?'':'none';
   const{ghToken:token,gistId}=state.settings;
-  if(token&&gistId){setSyncIndicator(t('syncing'),true);try{const res=await fetch(`https://api.github.com/gists/${gistId}`,{headers:{'Authorization':`token ${token}`}});if(res.ok){const data=await res.json();const content=data.files['habits.json']?.content;if(content){try{const l=JSON.parse(content);if(l.habits)state.habits=l.habits;if(l.logs)state.logs=l.logs;if(l.notes)state.notes=l.notes;if(l.dayNotes)state.dayNotes=l.dayNotes;if(l.settings){const loc=state.settings.lang;state.settings={...state.settings,...l.settings};state.settings.lang=loc;lang=loc;}saveLocal();renderJournals();setSyncIndicator(t('synced'),false);}catch(e){setSyncIndicator('',false);}}}else setSyncIndicator(t('offline'),false);}catch(e){setSyncIndicator(t('offline'),false);}setTimeout(()=>setSyncIndicator('',false),3000);}
+  if(token&&gistId){setSyncIndicator(t('syncing'),true);try{const data=await loadFromGist(token,gistId);if(data.habits)state.habits=data.habits;if(data.logs)state.logs=data.logs;if(data.notes)state.notes=data.notes;if(data.dayNotes)state.dayNotes=data.dayNotes;if(data.settings){const loc=state.settings.lang;state.settings={...state.settings,...data.settings};state.settings.lang=loc;lang=loc;}saveLocal();renderJournals();setSyncIndicator(t('synced'),false);}catch(e){setSyncIndicator(t('offline'),false);}setTimeout(()=>setSyncIndicator('',false),3000);}
 }
 init();
 </script>
