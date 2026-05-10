@@ -136,18 +136,19 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .day-cell.has-note::after,.month-cell.has-note::after{content:'';position:absolute;bottom:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--accent);pointer-events:none;}
 
 /* ACTION BAR */
-.action-bar{position:fixed;bottom:calc(var(--safe-bottom) + 58px);left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:398px;background:var(--card);border-radius:18px;padding:10px 12px;display:none;z-index:50;box-shadow:0 8px 32px rgba(0,0,0,.6);}
+.action-bar{position:fixed;bottom:calc(var(--safe-bottom) + 58px);left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:398px;background:#1e1e20;border-radius:20px;padding:12px 12px 14px;display:none;z-index:50;box-shadow:0 12px 40px rgba(0,0,0,.75);}
 .action-bar.visible{display:block;}
-.action-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
-.action-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px;border-radius:14px;border:none;cursor:pointer;background:var(--card2);transition:transform .1s;}
-.action-btn:active{transform:scale(.93);}
-.action-btn .ab-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--card2);}
-.ab-yes .ab-icon{background:#3EAD52;}
-.ab-no .ab-icon{background:#787878;}
-.ab-skip .ab-icon{background:#6B8FA8;}
-.ab-note .ab-icon{background:#E8943A;}
-.ab-erase .ab-icon{background:#4A3F3F;}
-.action-bar-hint{font-size:12px;color:var(--text3);text-align:center;margin-bottom:8px;}
+.action-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.action-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 4px;border-radius:16px;border:none;cursor:pointer;background:none;transition:transform .12s,opacity .12s;color:#fff;}
+.action-btn:active{transform:scale(.9);opacity:.8;}
+.action-btn .ab-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;}
+.ab-erase .ab-icon{background:#5C4033;}
+.ab-yes  .ab-icon{background:#2E7D45;}
+.ab-no   .ab-icon{background:#8B3A3A;}
+.ab-skip .ab-icon{background:#4A6F8A;}
+.ab-note .ab-icon{background:#B5712A;}
+.action-btn .ab-label{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);letter-spacing:.2px;}
+.action-bar-hint{font-size:12px;color:rgba(255,255,255,.35);text-align:center;margin-bottom:10px;letter-spacing:.1px;}
 
 /* BOTTOM NAV */
 .bottom-nav{display:flex;align-items:flex-start;justify-content:space-around;background:var(--card);border-top:.5px solid var(--border);flex-shrink:0;z-index:20;padding:10px 0;padding-bottom:max(calc(env(safe-area-inset-bottom) + 10px),20px);}
@@ -402,11 +403,26 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 <div class="action-bar" id="action-bar">
   <div class="action-bar-hint" id="action-bar-hint">Выберите действие</div>
   <div class="action-btns">
-    <button class="action-btn ab-erase"  onclick="applyAction('erase')">  <div class="ab-icon">✕</div><span class="ab-label">Стереть</span></button>
-    <button class="action-btn ab-yes" onclick="applyAction('done')"> <div class="ab-icon">✓</div><span class="ab-label">Да</span></button>
-    <button class="action-btn ab-no"  onclick="applyAction('missed')"><div class="ab-icon">✕</div><span class="ab-label">Нет</span></button>
-    <button class="action-btn ab-skip" onclick="applyAction('skipped')"><div class="ab-icon">⇒</div><span class="ab-label">Пропуск</span></button>
-    <button class="action-btn ab-note" onclick="openDayNote()">       <div class="ab-icon">📝</div><span class="ab-label">Заметка</span></button>
+    <button class="action-btn ab-erase" onclick="applyAction('erase')">
+      <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+      <span class="ab-label">Стереть</span>
+    </button>
+    <button class="action-btn ab-yes" onclick="applyAction('done')">
+      <div class="ab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <span class="ab-label">Да</span>
+    </button>
+    <button class="action-btn ab-no" onclick="applyAction('missed')">
+      <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+      <span class="ab-label">Нет</span>
+    </button>
+    <button class="action-btn ab-skip" onclick="applyAction('skipped')">
+      <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></div>
+      <span class="ab-label">Пропуск</span>
+    </button>
+    <button class="action-btn ab-note" onclick="openDayNote()">
+      <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></div>
+      <span class="ab-label">Заметка</span>
+    </button>
   </div>
 </div>
 
@@ -962,20 +978,33 @@ function _buildPayload(){
 async function saveToGist(token, gistId, data){
   if(!token)throw new Error('NO_TOKEN');
   if(!gistId)throw new Error('NO_GIST');
+  // Support both ghp_ (classic) and github_pat_ (fine-grained) tokens
+  const authHeader=token.startsWith('github_pat_')?`Bearer ${token}`:`token ${token}`;
   const res=await fetch(`https://api.github.com/gists/${gistId}`,{method:'PATCH',
-    headers:{'Authorization':`token ${token}`,'Content-Type':'application/json'},
+    headers:{
+      'Authorization':authHeader,
+      'Content-Type':'application/json',
+      'Accept':'application/vnd.github+json',
+      'X-GitHub-Api-Version':'2022-11-28'
+    },
     body:JSON.stringify({files:{'habits-data.json':{content:JSON.stringify(data,null,2)}}})});
-  if(res.status===401)throw new Error('AUTH');
+  if(res.status===401||res.status===403)throw new Error('AUTH');
   if(res.status===404)throw new Error('NOT_FOUND');
+  if(res.status===422)throw new Error('INVALID');
   if(!res.ok)throw new Error('ERR_'+res.status);
   return await res.json();
 }
 async function loadFromGist(token, gistId){
   if(!token)throw new Error('NO_TOKEN');
   if(!gistId)throw new Error('NO_GIST');
+  const authHeader=token.startsWith('github_pat_')?`Bearer ${token}`:`token ${token}`;
   const res=await fetch(`https://api.github.com/gists/${gistId}`,{
-    headers:{'Authorization':`token ${token}`}});
-  if(res.status===401)throw new Error('AUTH');
+    headers:{
+      'Authorization':authHeader,
+      'Accept':'application/vnd.github+json',
+      'X-GitHub-Api-Version':'2022-11-28'
+    }});
+  if(res.status===401||res.status===403)throw new Error('AUTH');
   if(res.status===404)throw new Error('NOT_FOUND');
   if(!res.ok)throw new Error('ERR_'+res.status);
   const data=await res.json();
@@ -985,11 +1014,17 @@ async function loadFromGist(token, gistId){
 }
 async function createNewGist(token, data){
   if(!token)throw new Error('NO_TOKEN');
+  const authHeader=token.startsWith('github_pat_')?`Bearer ${token}`:`token ${token}`;
   const res=await fetch('https://api.github.com/gists',{method:'POST',
-    headers:{'Authorization':`token ${token}`,'Content-Type':'application/json'},
+    headers:{
+      'Authorization':authHeader,
+      'Content-Type':'application/json',
+      'Accept':'application/vnd.github+json',
+      'X-GitHub-Api-Version':'2022-11-28'
+    },
     body:JSON.stringify({description:'Habit Tracker Data',public:false,
       files:{'habits-data.json':{content:JSON.stringify(data,null,2)}}})});
-  if(res.status===401)throw new Error('AUTH');
+  if(res.status===401||res.status===403)throw new Error('AUTH');
   if(!res.ok)throw new Error('ERR_'+res.status);
   return await res.json();
 }
