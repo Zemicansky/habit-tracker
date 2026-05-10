@@ -917,20 +917,49 @@ function ctxDelete(){if(!confirm(t('confirm_delete_habit_ctx')))return;state.hab
 document.addEventListener('click',e=>{if(!e.target.closest('#context-menu'))closeContextMenu();});
 
 // ── SETUP ─────────────────────────────────────────────────────
-function renderSetup(){document.getElementById('toggle-sound').className='toggle'+(state.settings.sound?' on':'');document.getElementById('toggle-chains').className='toggle'+(state.settings.chains?' on':'');const t2=document.getElementById('gh-token');if(t2)t2.value=state.settings.ghToken||'';const g2=document.getElementById('gh-gist-id');if(g2)g2.value=state.settings.gistId||'';document.getElementById('lang-check-ru').style.display=lang==='ru'?'':'none';document.getElementById('lang-check-en').style.display=lang==='en'?'':'none';}
+function renderSetup(){
+  document.getElementById('toggle-sound').className='toggle'+(state.settings.sound?' on':'');
+  document.getElementById('toggle-chains').className='toggle'+(state.settings.chains?' on':'');
+  // Load credentials from dedicated storage (never from state.settings)
+  const creds=_loadCredentials();
+  const t2=document.getElementById('gh-token');if(t2)t2.value=creds.token;
+  const g2=document.getElementById('gh-gist-id');if(g2)g2.value=creds.gistId;
+  document.getElementById('lang-check-ru').style.display=lang==='ru'?'':'none';
+  document.getElementById('lang-check-en').style.display=lang==='en'?'':'none';
+}
 function toggleSetting(key){state.settings[key]=!state.settings[key];saveLocal();renderSetup();}
 
 // ── GIST ──────────────────────────────────────────────────────
-function _gistCreds(){
-  const token=(document.getElementById('gh-token').value||'').trim()||state.settings.ghToken||'';
-  const gistId=(document.getElementById('gh-gist-id').value||'').trim()||state.settings.gistId||'';
-  // persist latest input
-  if(token){state.settings.ghToken=token;document.getElementById('gh-token').value=token;}
-  if(gistId){state.settings.gistId=gistId;document.getElementById('gh-gist-id').value=gistId;}
-  saveLocal();
-  return{token,gistId};
+// Token and GistId are stored SEPARATELY in localStorage under their own keys
+// so they are NEVER overwritten when loading data from the cloud.
+function _saveCredentials(token, gistId){
+  if(token)localStorage.setItem('gistToken', token);
+  if(gistId)localStorage.setItem('gistId', gistId);
 }
-async function saveToGist(token,gistId,data){
+function _loadCredentials(){
+  return{
+    token: localStorage.getItem('gistToken')||'',
+    gistId: localStorage.getItem('gistId')||''
+  };
+}
+function _gistCreds(){
+  // Read from input fields first, fall back to dedicated localStorage keys
+  const inputToken=(document.getElementById('gh-token').value||'').trim();
+  const inputGistId=(document.getElementById('gh-gist-id').value||'').trim();
+  const saved=_loadCredentials();
+  const token=inputToken||saved.token;
+  const gistId=inputGistId||saved.gistId;
+  // Always persist to dedicated keys and to UI fields
+  _saveCredentials(token, gistId);
+  if(token&&document.getElementById('gh-token'))document.getElementById('gh-token').value=token;
+  if(gistId&&document.getElementById('gh-gist-id'))document.getElementById('gh-gist-id').value=gistId;
+  return{token, gistId};
+}
+// Data payload NEVER includes settings — credentials stay local only
+function _buildPayload(){
+  return{habits:state.habits, logs:state.logs, notes:state.notes, dayNotes:state.dayNotes};
+}
+async function saveToGist(token, gistId, data){
   if(!token)throw new Error('NO_TOKEN');
   if(!gistId)throw new Error('NO_GIST');
   const res=await fetch(`https://api.github.com/gists/${gistId}`,{method:'PATCH',
@@ -941,7 +970,7 @@ async function saveToGist(token,gistId,data){
   if(!res.ok)throw new Error('ERR_'+res.status);
   return await res.json();
 }
-async function loadFromGist(token,gistId){
+async function loadFromGist(token, gistId){
   if(!token)throw new Error('NO_TOKEN');
   if(!gistId)throw new Error('NO_GIST');
   const res=await fetch(`https://api.github.com/gists/${gistId}`,{
@@ -954,7 +983,7 @@ async function loadFromGist(token,gistId){
   if(!fileContent)throw new Error('NO_FILE');
   return JSON.parse(fileContent);
 }
-async function createNewGist(token,data){
+async function createNewGist(token, data){
   if(!token)throw new Error('NO_TOKEN');
   const res=await fetch('https://api.github.com/gists',{method:'POST',
     headers:{'Authorization':`token ${token}`,'Content-Type':'application/json'},
@@ -966,8 +995,8 @@ async function createNewGist(token,data){
 }
 function _gistErrMsg(e){
   if(!navigator.onLine)return'🚫 Нет соединения';
-  if(e.message==='AUTH')return'🔑 Ошибка авторизации';
-  if(e.message==='NOT_FOUND')return'❌ Gist не найден';
+  if(e.message==='AUTH')return'🔑 Ошибка авторизации — проверьте токен';
+  if(e.message==='NOT_FOUND')return'❌ Gist не найден — проверьте ID';
   if(e.message==='NO_TOKEN')return'⚠️ Введите GitHub Token';
   if(e.message==='NO_GIST')return'⚠️ Введите Gist ID';
   if(e.message==='NO_FILE')return'⚠️ Файл habits-data.json не найден в Gist';
@@ -977,8 +1006,7 @@ async function gistUpload(){
   const{token,gistId}=_gistCreds();
   showGistStatus('Выгружаем...','loading');
   try{
-    const payload={habits:state.habits,logs:state.logs,notes:state.notes,dayNotes:state.dayNotes,settings:state.settings};
-    await saveToGist(token,gistId,payload);
+    await saveToGist(token, gistId, _buildPayload());
     showGistStatus('✅ Данные выгружены в Gist','ok');
   }catch(e){showGistStatus(_gistErrMsg(e),'err');}
 }
@@ -986,36 +1014,48 @@ async function gistDownload(){
   const{token,gistId}=_gistCreds();
   showGistStatus('Загружаем...','loading');
   try{
-    const data=await loadFromGist(token,gistId);
+    const data=await loadFromGist(token, gistId);
+    // Merge habits/logs/notes only — NEVER touch credentials or lang settings
     if(data.habits)state.habits=data.habits;
     if(data.logs)state.logs=data.logs;
     if(data.notes)state.notes=data.notes;
     if(data.dayNotes)state.dayNotes=data.dayNotes;
-    if(data.settings){const loc=state.settings.lang;state.settings={...state.settings,...data.settings};state.settings.lang=loc;lang=loc;}
     saveLocal();renderJournals();
     showGistStatus('✅ Данные загружены из Gist','ok');
   }catch(e){showGistStatus(_gistErrMsg(e),'err');}
 }
 async function gistCreate(){
-  const token=(document.getElementById('gh-token').value||'').trim()||state.settings.ghToken||'';
+  const{token}=_gistCreds();
   if(!token){showGistStatus('⚠️ Введите GitHub Token','err');return;}
   showGistStatus('Создаём Gist...','loading');
   try{
-    const payload={habits:state.habits,logs:state.logs,notes:state.notes,dayNotes:state.dayNotes,settings:state.settings};
-    const result=await createNewGist(token,payload);
-    state.settings.gistId=result.id;state.settings.ghToken=token;
-    document.getElementById('gh-gist-id').value=result.id;
-    document.getElementById('gh-token').value=token;
+    const result=await createNewGist(token, _buildPayload());
+    _saveCredentials(token, result.id);
+    if(document.getElementById('gh-gist-id'))document.getElementById('gh-gist-id').value=result.id;
     saveLocal();
     showGistStatus('✅ Gist создан: '+result.id,'ok');
   }catch(e){showGistStatus(_gistErrMsg(e),'err');}
 }
-// Keep legacy saveGistSettings for backward compat (called from updateTranslations btn references)
+// Legacy aliases
 async function saveGistSettings(){await gistUpload();}
 async function syncToGist(){await gistUpload();}
-let gistTimer=null;function syncToGistDebounced(){clearTimeout(gistTimer);gistTimer=setTimeout(async()=>{const{token,gistId}=_gistCreds();if(!token||!gistId)return;setSyncIndicator(t('syncing'),true);try{const payload={habits:state.habits,logs:state.logs,notes:state.notes,dayNotes:state.dayNotes,settings:state.settings};await saveToGist(token,gistId,payload);setSyncIndicator(t('synced'),false);}catch(e){setSyncIndicator(t('offline'),false);}setTimeout(()=>setSyncIndicator('',false),3000);},2000);}
+// Debounced auto-sync: reads creds from dedicated localStorage keys — no UI dependency
+let gistTimer=null;
+function syncToGistDebounced(){
+  clearTimeout(gistTimer);
+  gistTimer=setTimeout(async()=>{
+    const{token,gistId}=_loadCredentials(); // use saved creds, NOT input fields
+    if(!token||!gistId)return;
+    setSyncIndicator(t('syncing'),true);
+    try{
+      await saveToGist(token, gistId, _buildPayload());
+      setSyncIndicator(t('synced'),false);
+    }catch(e){setSyncIndicator(t('sync_err'),false);}
+    setTimeout(()=>setSyncIndicator('',false),3000);
+  },2000);
+}
 function setSyncIndicator(msg,loading){const el=document.getElementById('sync-indicator');el.textContent=msg;el.className='sync-indicator'+(loading?' syncing':'');}
-function showGistStatus(msg,type){const el=document.getElementById('gist-status');el.textContent=msg;el.className='gist-status '+type;}
+function showGistStatus(msg,type){const el=document.getElementById('gist-status');el.textContent=msg;el.className='gist-status '+type;el.style.display='block';}
 
 // ── EXPORT / IMPORT ───────────────────────────────────────────
 function exportData(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`habits_${dateKey(new Date())}.json`;a.click();}
@@ -1045,8 +1085,21 @@ async function init(){
   loadLocal();addDemoData();renderJournals();updateTranslations();
   document.getElementById('lang-check-ru').style.display=lang==='ru'?'':'none';
   document.getElementById('lang-check-en').style.display=lang==='en'?'':'none';
-  const{ghToken:token,gistId}=state.settings;
-  if(token&&gistId){setSyncIndicator(t('syncing'),true);try{const data=await loadFromGist(token,gistId);if(data.habits)state.habits=data.habits;if(data.logs)state.logs=data.logs;if(data.notes)state.notes=data.notes;if(data.dayNotes)state.dayNotes=data.dayNotes;if(data.settings){const loc=state.settings.lang;state.settings={...state.settings,...data.settings};state.settings.lang=loc;lang=loc;}saveLocal();renderJournals();setSyncIndicator(t('synced'),false);}catch(e){setSyncIndicator(t('offline'),false);}setTimeout(()=>setSyncIndicator('',false),3000);}
+  const{token,gistId}=_loadCredentials();
+  if(token&&gistId){
+    setSyncIndicator(t('syncing'),true);
+    try{
+      const data=await loadFromGist(token,gistId);
+      // Only merge habits/logs/notes — credentials and settings stay local
+      if(data.habits)state.habits=data.habits;
+      if(data.logs)state.logs=data.logs;
+      if(data.notes)state.notes=data.notes;
+      if(data.dayNotes)state.dayNotes=data.dayNotes;
+      saveLocal();renderJournals();
+      setSyncIndicator(t('synced'),false);
+    }catch(e){setSyncIndicator(t('sync_err'),false);}
+    setTimeout(()=>setSyncIndicator('',false),3000);
+  }
 }
 init();
 </script>
