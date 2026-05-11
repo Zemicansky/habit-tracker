@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#323235">
 <meta name="msapplication-navbutton-color" content="#323235">
 <title>Habit Tracker</title>
-<link rel="apple-touch-icon" id="apple-touch-icon-link" href="">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%231a1a1c'/%3E%3Ccircle cx='90' cy='90' r='62' fill='%2328a745'/%3E%3Cpolyline points='54,92 78,116 126,64' fill='none' stroke='white' stroke-width='13' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
@@ -99,15 +99,6 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 
 /* HABIT LIST */
 .habit-list{padding:0 16px;display:flex;flex-direction:column;gap:10px;}
-
-/* CATEGORY HEADER */
-.category-header{display:flex;align-items:center;justify-content:space-between;padding:10px 2px 4px;margin-top:4px;}
-.category-header:first-child{margin-top:0;}
-.category-title{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;}
-.category-badge{display:flex;align-items:center;gap:5px;background:var(--card2);border-radius:20px;padding:3px 9px;}
-.category-badge-icon{font-size:12px;line-height:1;}
-.category-badge-count{font-size:12px;font-weight:700;color:var(--text2);}
-.category-badge.all-done .category-badge-count{color:var(--green);}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .habit-list.anim{animation:fadeIn .22s ease;}
 
@@ -119,7 +110,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .habit-sub{font-size:10px;color:var(--text3);margin-top:2px;}
 .streak-badge{display:flex;align-items:center;background:var(--card2);border-radius:20px;padding:4px 10px;min-width:46px;justify-content:center;flex-shrink:0;}
 .streak-badge.green{background:var(--green);}
-.streak-badge.red{background:var(--red);}
+.streak-badge.red{background:var(--red);}.streak-badge.red .streak-num{color:#fff;}
 .streak-num{font-size:15px;font-weight:700;color:var(--text);}
 
 /* CELLS */
@@ -383,7 +374,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
         <div class="setup-row" onclick="importData()"><span>📥 Импорт</span><span style="color:var(--text3)">›</span></div>
         <div class="setup-row" onclick="clearAllData()"><span style="color:var(--red)">🗑 Очистить все данные</span><span style="color:var(--text3)">›</span></div>
       </div>
-      <div style="padding:16px;text-align:center"><p style="font-size:12px;color:var(--text3)">Habit Tracker v4.9</p></div>
+      <div style="padding:16px;text-align:center"><p style="font-size:12px;color:var(--text3)">Habit Tracker v4.3</p></div>
     </div>
   </div>
 </div>
@@ -640,14 +631,7 @@ function goToday(){periodOffset=0;focusedDay=null;hideActionBar();renderJournals
 // ── ACTION BAR ────────────────────────────────────────────────
 function showActionBar(habitId,dateStr){selectedHabitId=habitId;selectedDate=dateStr;const h=state.habits.find(h=>h.id===habitId);document.getElementById('action-bar-hint').textContent=(h?.name||'')+' · '+dateStr;document.getElementById('action-bar').classList.add('visible');}
 function hideActionBar(){document.getElementById('action-bar').classList.remove('visible');selectedHabitId=null;selectedDate=null;}
-function applyAction(action){
-  if(!selectedHabitId||!selectedDate)return;
-  const key=selectedHabitId+'_'+selectedDate;
-  if(action==='erase')delete state.logs[key];
-  else state.logs[key]=action;
-  saveLocal();renderJournals();hideActionBar();syncToGistDebounced();
-  if(action==='done'&&state.settings.sound)playTick();
-}
+function applyAction(action){if(!selectedHabitId||!selectedDate)return;const key=selectedHabitId+'_'+selectedDate;if(action==='erase')delete state.logs[key];else state.logs[key]=action;saveLocal();renderJournals();hideActionBar();syncToGistDebounced();if(action==='done'&&state.settings.sound)playTick();}
 document.addEventListener('click',e=>{
   if(!e.target.closest('#action-bar')&&!e.target.closest('.day-cell')&&!e.target.closest('.month-cell'))hideActionBar();
   if(!e.target.closest('#dropdown-menu')&&!e.target.closest('#header-title-btn'))closeDropdown();
@@ -721,72 +705,30 @@ function renderHabits(days,mode){
   if(!habits.length){list.innerHTML=`<div class="empty-state"><div class="emoji">🎯</div><h3>${t('no_habits')}</h3><p>${t('add_habit')}</p></div>`;return;}
   const focusedKey=focusedDay||(periodOffset===0?todayKey():null);
   const focusedColIdx=mode==='week'?days.findIndex(d=>dateKey(d)===focusedKey):-1;
-
-  // Group habits by tag/category
-  const categoryIcons={'Exercising':'🏃','Mind':'🧠','Health':'❤️','Work':'💼','School':'📚','Family':'👨‍👩‍👧','Productivity':'⚡','':(currentFilter==='all'?'':' ')};
-  const categoryNames={'Exercising':'Спорт','Mind':'Разум','Health':'Здоровье','Work':'Работа','School':'Учёба','Family':'Семья','Productivity':'Продуктивность','':(lang==='en'?'General':'Общее')};
-
-  // Build groups preserving insertion order
-  const groupOrder=[];const groups={};
-  habits.forEach(h=>{const g=h.tag||'';if(!groups[g]){groups[g]=[];groupOrder.push(g);}groups[g].push(h);});
-
-  const todayStr=todayKey();
-
-  groupOrder.forEach(tag=>{
-    const groupHabits=groups[tag];
-
-    // Count uncompleted for this group based on focused/selected day
-    // "uncompleted" = habit has no 'done' log for the focused/selected date
-    let uncompletedCount=0;
-    const checkDate=focusedKey||todayStr;
-    groupHabits.forEach(h=>{
-      const val=state.logs[h.id+'_'+checkDate]||'';
-      if(val!=='done')uncompletedCount++;
-    });
-
-    // Category header
-    const hdr=document.createElement('div');hdr.className='category-header';
-    const icon=categoryIcons[tag]!==undefined?categoryIcons[tag]:'📌';
-    const name=categoryNames[tag]||tag;
-    const allDone=uncompletedCount===0;
-    hdr.innerHTML=`<span class="category-title">${icon} ${name}</span><div class="category-badge${allDone?' all-done':''}"><span class="category-badge-count">${allDone?'✓':uncompletedCount}</span></div>`;
-    list.appendChild(hdr);
-
-    groupHabits.forEach(habit=>{
-      const card=document.createElement('div');card.className='habit-card';card.dataset.id=habit.id;
-      let streak=0;const chk=new Date();
-      while(streak<366){const v=state.logs[habit.id+'_'+dateKey(chk)];if(v==='done'){streak++;chk.setDate(chk.getDate()-1);}else break;}
-      const wDone=days.filter(d=>state.logs[habit.id+'_'+dateKey(d)]==='done').length;
-      const wMissed=days.filter(d=>state.logs[habit.id+'_'+dateKey(d)]==='missed').length;
-
-      // Fix badge color: strictly based on today's log status first, then streak/missed
-      const todayVal=state.logs[habit.id+'_'+todayStr]||'';
-      let bc='';
-      if(todayVal==='done')bc='green';
-      else if(todayVal==='missed')bc='red';
-      else if(streak>0)bc='green';
-      else if(wMissed>0)bc='red';
-
-      const badgeNum=streak>0?streak:wDone;
-      card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${habit.name}</div>${habit.tag||habit.goal?`<div class="habit-sub">${[habit.tag,habit.goal].filter(Boolean).join(' · ')}</div>`:''}</div><div class="streak-badge ${bc}"><span class="streak-num">${badgeNum}</span></div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div>`;
-      let pressTimer=null;
-      card.addEventListener('touchstart',e=>{pressTimer=setTimeout(()=>showContextMenu(e,habit.id),600);},{passive:true});
-      card.addEventListener('touchend',()=>clearTimeout(pressTimer));
-      card.addEventListener('touchmove',()=>clearTimeout(pressTimer));
-      list.appendChild(card);
-      const grid=document.getElementById('grid-'+habit.id),cc=mode==='week'?'day-cell':'month-cell';
-      days.forEach((d,ci)=>{
-        const cell=document.createElement('div');cell.className=cc;
-        const val=state.logs[habit.id+'_'+dateKey(d)]||'';
-        if(val==='done')cell.classList.add('done');else if(val==='missed')cell.classList.add('missed');else if(val==='skipped')cell.classList.add('skipped');
-        if(isToday(d))cell.classList.add('today');
-        if(isFuture(d))cell.classList.add('future');
-        if(mode==='week'&&ci===focusedColIdx&&!isToday(d))cell.classList.add('selected-col');
-        if(state.dayNotes[dayNoteKey(habit.id,dateKey(d))])cell.classList.add('has-note');
-        const dot=document.createElement('div');dot.className='dot';cell.appendChild(dot);
-        if(!isFuture(d))cell.addEventListener('click',e=>{e.stopPropagation();showActionBar(habit.id,dateKey(d));});
-        grid.appendChild(cell);
-      });
+  habits.forEach(habit=>{
+    const card=document.createElement('div');card.className='habit-card';card.dataset.id=habit.id;
+    let lastStatus='';let streakCount=0;const chk=new Date();
+    for(let i=0;i<366;i++){const k=habit.id+'_'+dateKey(chk);const v=state.logs[k]||'';if(v==='done'||v==='missed'){if(!lastStatus)lastStatus=v;if(v===lastStatus)streakCount++;else break;}else if(lastStatus)break;chk.setDate(chk.getDate()-1);}
+    let bc='';if(lastStatus==='done')bc='green';else if(lastStatus==='missed')bc='red';
+    const counter=streakCount||0;
+    card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${habit.name}</div>${habit.tag||habit.goal?`<div class="habit-sub">${[habit.tag,habit.goal].filter(Boolean).join(' · ')}</div>`:''}</div><div class="streak-badge ${bc}"><span class="streak-num">${counter}</span></div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div>`;
+    let pressTimer=null;
+    card.addEventListener('touchstart',e=>{pressTimer=setTimeout(()=>showContextMenu(e,habit.id),600);},{passive:true});
+    card.addEventListener('touchend',()=>clearTimeout(pressTimer));
+    card.addEventListener('touchmove',()=>clearTimeout(pressTimer));
+    list.appendChild(card);
+    const grid=document.getElementById('grid-'+habit.id),cc=mode==='week'?'day-cell':'month-cell';
+    days.forEach((d,ci)=>{
+      const cell=document.createElement('div');cell.className=cc;
+      const val=state.logs[habit.id+'_'+dateKey(d)]||'';
+      if(val==='done')cell.classList.add('done');else if(val==='missed')cell.classList.add('missed');else if(val==='skipped')cell.classList.add('skipped');
+      if(isToday(d))cell.classList.add('today');
+      if(isFuture(d))cell.classList.add('future');
+      if(mode==='week'&&ci===focusedColIdx&&!isToday(d))cell.classList.add('selected-col');
+      if(state.dayNotes[dayNoteKey(habit.id,dateKey(d))])cell.classList.add('has-note');
+      const dot=document.createElement('div');dot.className='dot';cell.appendChild(dot);
+      if(!isFuture(d))cell.addEventListener('click',e=>{e.stopPropagation();showActionBar(habit.id,dateKey(d));});
+      grid.appendChild(cell);
     });
   });
 }
@@ -1173,31 +1115,8 @@ function addDemoData(){
   saveLocal();
 }
 
-// ── APPLE TOUCH ICON (green checkmark) ───────────────────────
-function generateAppleTouchIcon(){
-  try{
-    const c=document.createElement('canvas');c.width=180;c.height=180;
-    const ctx=c.getContext('2d');
-    // Background: dark rounded square (iOS clips anyway, but nice for preview)
-    ctx.fillStyle='#1c1c1e';
-    ctx.beginPath();const r=36,w=180,h=180;
-    ctx.moveTo(r,0);ctx.lineTo(w-r,0);ctx.quadraticCurveTo(w,0,w,r);
-    ctx.lineTo(w,h-r);ctx.quadraticCurveTo(w,h,w-r,h);
-    ctx.lineTo(r,h);ctx.quadraticCurveTo(0,h,0,h-r);
-    ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0);ctx.closePath();ctx.fill();
-    // Green circle
-    ctx.fillStyle='#50D167';ctx.beginPath();ctx.arc(90,90,68,0,Math.PI*2);ctx.fill();
-    // White checkmark
-    ctx.strokeStyle='#fff';ctx.lineWidth=16;ctx.lineCap='round';ctx.lineJoin='round';
-    ctx.beginPath();ctx.moveTo(46,90);ctx.lineTo(76,122);ctx.lineTo(134,60);ctx.stroke();
-    const link=document.getElementById('apple-touch-icon-link');
-    if(link)link.href=c.toDataURL('image/png');
-  }catch(e){}
-}
-
 // ── INIT ──────────────────────────────────────────────────────
 async function init(){
-  generateAppleTouchIcon();
   loadLocal();addDemoData();renderJournals();updateTranslations();
   document.getElementById('lang-check-ru').style.display=lang==='ru'?'':'none';
   document.getElementById('lang-check-en').style.display=lang==='en'?'':'none';
