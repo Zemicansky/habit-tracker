@@ -112,6 +112,10 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .streak-badge.green{background:var(--green);}
 .streak-badge.red{background:var(--red);}.streak-badge.red .streak-num{color:#fff;}
 .streak-num{font-size:15px;font-weight:700;color:var(--text);}
+.max-streak-badge{display:flex;align-items:center;background:#48484a;border-radius:20px;padding:4px 8px;min-width:46px;justify-content:center;flex-shrink:0;gap:3px;}
+.max-streak-icon{font-size:12px;line-height:1;}
+.max-streak-num{font-size:13px;font-weight:600;color:#8e8e93;}
+.streak-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0;}
 
 /* CELLS */
 .day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
@@ -234,7 +238,10 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .day-note-date{font-size:12px;color:var(--text3);margin-bottom:14px;}
 .note-char-count{font-size:11px;color:var(--text3);text-align:right;margin-top:4px;}
 
-/* MISC */
+/* TODAY COUNTER */
+.today-counter{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--card2);border-radius:14px;padding:5px 20px;min-width:72px;cursor:default;flex-shrink:0;margin-right:4px;}
+.today-counter-num{font-size:18px;font-weight:700;color:var(--text);line-height:1.1;}
+.today-counter-lbl{font-size:11px;font-weight:500;color:var(--text2);line-height:1.2;}
 .empty-state{text-align:center;padding:60px 32px;color:var(--text3);}
 .empty-state .emoji{font-size:48px;margin-bottom:16px;}
 .empty-state h3{font-size:18px;color:var(--text2);margin-bottom:8px;}
@@ -299,9 +306,15 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
   <div class="date-row" id="date-row" style="display:none"></div>
 
   <!-- FILTER -->
-  <div class="filter-bar">
-    <button class="filter-tag active" id="filter-all" onclick="setFilter('all',this)">Все</button>
-    <button class="filter-tag"        id="filter-ex"  onclick="setFilter('Exercising',this)">Спорт</button>
+  <div class="filter-bar" style="justify-content:space-between">
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="filter-tag active" id="filter-all" onclick="setFilter('all',this)">Все</button>
+      <button class="filter-tag"        id="filter-ex"  onclick="setFilter('Exercising',this)">Спорт</button>
+    </div>
+    <div class="today-counter" id="today-counter">
+      <span class="today-counter-num" id="today-counter-num">0</span>
+      <span class="today-counter-lbl" id="today-counter-lbl">Today</span>
+    </div>
   </div>
 
   <!-- SWIPEABLE HABIT LIST -->
@@ -577,7 +590,7 @@ const I18N={
 function t(k){ return (I18N[lang]||I18N.ru)[k]||k; }
 
 // ── STATE ─────────────────────────────────────────────────────
-let state={habits:[],logs:{},notes:[],dayNotes:{},settings:{sound:true,chains:true,gistId:'',ghToken:'',lang:'en'}};
+let state={habits:[],logs:{},notes:[],dayNotes:{},maxStreaks:{},settings:{sound:true,chains:true,gistId:'',ghToken:'',lang:'en'}};
 let lang='en',viewMode='week',periodOffset=0;
 let selectedDate=null,selectedHabitId=null,editingHabitId=null;
 let selectedTag='',ctxHabitId=null,currentFilter='all';
@@ -594,7 +607,7 @@ function getMonthDays(off=0){const n=new Date(),rawM=n.getMonth()+off,y=n.getFul
 
 // ── STORAGE ───────────────────────────────────────────────────
 function saveLocal(){localStorage.setItem('habitState2',JSON.stringify(state));}
-function loadLocal(){const r=localStorage.getItem('habitState2');if(r){try{const p=JSON.parse(r);state={...state,...p};if(!state.dayNotes)state.dayNotes={};}catch(e){}}lang=state.settings.lang||'en';}
+function loadLocal(){const r=localStorage.getItem('habitState2');if(r){try{const p=JSON.parse(r);state={...state,...p};if(!state.dayNotes)state.dayNotes={};if(!state.maxStreaks)state.maxStreaks={};}catch(e){}}lang=state.settings.lang||'en';}
 
 // ── NAV ───────────────────────────────────────────────────────
 function switchPage(name){
@@ -631,7 +644,31 @@ function goToday(){periodOffset=0;focusedDay=null;hideActionBar();renderJournals
 // ── ACTION BAR ────────────────────────────────────────────────
 function showActionBar(habitId,dateStr){selectedHabitId=habitId;selectedDate=dateStr;const h=state.habits.find(h=>h.id===habitId);document.getElementById('action-bar-hint').textContent=(h?.name||'')+' · '+dateStr;document.getElementById('action-bar').classList.add('visible');}
 function hideActionBar(){document.getElementById('action-bar').classList.remove('visible');selectedHabitId=null;selectedDate=null;}
-function applyAction(action){if(!selectedHabitId||!selectedDate)return;const key=selectedHabitId+'_'+selectedDate;if(action==='erase')delete state.logs[key];else state.logs[key]=action;saveLocal();renderJournals();hideActionBar();syncToGistDebounced();if(action==='done'&&state.settings.sound)playTick();}
+function applyAction(action){if(!selectedHabitId||!selectedDate)return;const key=selectedHabitId+'_'+selectedDate;if(action==='erase')delete state.logs[key];else state.logs[key]=action;
+  // Recompute and persist max streak from full history (never decreases)
+  const hid=selectedHabitId;
+  const prev=state.maxStreaks[hid]||0;
+  const computed=computeMaxStreak(hid);
+  state.maxStreaks[hid]=Math.max(prev,computed);
+  saveLocal();renderJournals();hideActionBar();syncToGistDebounced();if(action==='done'&&state.settings.sound)playTick();}
+
+// Compute max ever consecutive 'done' streak for a habit from its full log history
+function computeMaxStreak(hid){
+  const keys=Object.keys(state.logs).filter(k=>k.startsWith(hid+'_')&&state.logs[k]==='done');
+  if(!keys.length)return 0;
+  const dates=keys.map(k=>k.slice(hid.length+1)).sort();
+  let best=0,cur=0,prev=null;
+  dates.forEach(ds=>{
+    if(prev){
+      const p=new Date(prev),c=new Date(ds);
+      const diff=(c-p)/(1000*60*60*24);
+      if(diff===1){cur++;}else{cur=1;}
+    }else{cur=1;}
+    if(cur>best)best=cur;
+    prev=ds;
+  });
+  return best;
+}
 document.addEventListener('click',e=>{
   if(!e.target.closest('#action-bar')&&!e.target.closest('.day-cell')&&!e.target.closest('.month-cell'))hideActionBar();
   if(!e.target.closest('#dropdown-menu')&&!e.target.closest('#header-title-btn'))closeDropdown();
@@ -707,11 +744,26 @@ function renderHabits(days,mode){
   const focusedColIdx=mode==='week'?days.findIndex(d=>dateKey(d)===focusedKey):-1;
   habits.forEach(habit=>{
     const card=document.createElement('div');card.className='habit-card';card.dataset.id=habit.id;
-    let lastStatus='';let streakCount=0;const chk=new Date();
-    for(let i=0;i<366;i++){const k=habit.id+'_'+dateKey(chk);const v=state.logs[k]||'';if(v==='done'||v==='missed'){if(!lastStatus)lastStatus=v;if(v===lastStatus)streakCount++;else break;}else if(lastStatus)break;chk.setDate(chk.getDate()-1);}
-    let bc='';if(lastStatus==='done')bc='green';else if(lastStatus==='missed')bc='red';
-    const counter=streakCount||0;
-    card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${habit.name}</div>${habit.tag||habit.goal?`<div class="habit-sub">${[habit.tag,habit.goal].filter(Boolean).join(' · ')}</div>`:''}</div><div class="streak-badge ${bc}"><span class="streak-num">${counter}</span></div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div>`;
+    // Current streak: only consecutive 'done' going back from today. Empty/missed/skipped = break.
+    // If today is not yet marked, start checking from yesterday.
+    let streakCount=0;
+    const todayStr=todayKey();
+    const todayVal=state.logs[habit.id+'_'+todayStr]||'';
+    const startOffset=todayVal===''?1:0; // skip today if unmarked
+    const chk=new Date();chk.setDate(chk.getDate()-startOffset);
+    for(let i=0;i<366;i++){
+      const v=state.logs[habit.id+'_'+dateKey(chk)]||'';
+      if(v==='done'){streakCount++;}
+      else if(v==='skipped'){/* neutral — skip this day, don't break streak */}
+      else{break;}
+      chk.setDate(chk.getDate()-1);
+    }
+    const bc=streakCount>0?'green':'';
+    const counter=streakCount;
+    // Max streak: always from persisted value — never decreases
+    const maxStreak=state.maxStreaks[habit.id]||0;
+    const maxBadgeHtml=`<div class="max-streak-badge"><span class="max-streak-icon">🏆</span><span class="max-streak-num">${maxStreak}</span></div>`;
+    card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${habit.name}</div>${habit.tag||habit.goal?`<div class="habit-sub">${[habit.tag,habit.goal].filter(Boolean).join(' · ')}</div>`:''}</div><div class="streak-wrap"><div class="streak-badge ${bc}"><span class="streak-num">${counter}</span></div>${maxBadgeHtml}</div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div>`;
     let pressTimer=null;
     card.addEventListener('touchstart',e=>{pressTimer=setTimeout(()=>showContextMenu(e,habit.id),600);},{passive:true});
     card.addEventListener('touchend',()=>clearTimeout(pressTimer));
@@ -731,6 +783,7 @@ function renderHabits(days,mode){
       grid.appendChild(cell);
     });
   });
+  updateTodayCounter();
 }
 
 // ── SWIPE week-by-week ────────────────────────────────────────
@@ -752,6 +805,22 @@ function renderHabits(days,mode){
   },{passive:true});
 })();
 
+// ── TODAY COUNTER ─────────────────────────────────────────────
+function updateTodayCounter(){
+  const todK=todayKey();
+  const activeHabits=state.habits.filter(h=>!h.archived);
+  // Any action (done/missed/skipped) = marked. Empty = not yet handled.
+  const markedCount=activeHabits.filter(h=>{
+    const v=state.logs[h.id+'_'+todK]||'';
+    return v==='done'||v==='missed'||v==='skipped';
+  }).length;
+  const remaining=Math.max(0, activeHabits.length - markedCount);
+  const el=document.getElementById('today-counter-num');
+  const lbl=document.getElementById('today-counter-lbl');
+  if(el)el.textContent=remaining;
+  if(lbl)lbl.textContent=lang==='ru'?'Сегодня':'Today';
+}
+
 // ── FILTER ────────────────────────────────────────────────────
 function setFilter(f,el){currentFilter=f;document.querySelectorAll('.filter-tag').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderJournals();}
 
@@ -767,6 +836,7 @@ function updateTranslations(){
   // Filter bar
   const fa=document.getElementById('filter-all');if(fa)fa.textContent=t('filter_all');
   const fe=document.getElementById('filter-ex');if(fe)fe.textContent=t('filter_sport');
+  const tcLbl=document.getElementById('today-counter-lbl');if(tcLbl)tcLbl.textContent=t('today_lbl');
   // Action bar hint (only if not showing a habit name)
   const ah=document.getElementById('action-bar-hint');if(ah&&!selectedHabitId)ah.textContent=t('choose_action');
   // Action bar buttons
@@ -973,7 +1043,7 @@ function _gistCreds(){
 }
 // Data payload NEVER includes settings — credentials stay local only
 function _buildPayload(){
-  return{habits:state.habits, logs:state.logs, notes:state.notes, dayNotes:state.dayNotes};
+  return{habits:state.habits, logs:state.logs, notes:state.notes, dayNotes:state.dayNotes, maxStreaks:state.maxStreaks};
 }
 async function saveToGist(token, gistId, data){
   if(!token)throw new Error('NO_TOKEN');
@@ -1055,6 +1125,7 @@ async function gistDownload(){
     if(data.logs)state.logs=data.logs;
     if(data.notes)state.notes=data.notes;
     if(data.dayNotes)state.dayNotes=data.dayNotes;
+    if(data.maxStreaks)state.maxStreaks=data.maxStreaks;
     saveLocal();renderJournals();
     showGistStatus('✅ Данные загружены из Gist','ok');
   }catch(e){showGistStatus(_gistErrMsg(e),'err');}
@@ -1130,6 +1201,7 @@ async function init(){
       if(data.logs)state.logs=data.logs;
       if(data.notes)state.notes=data.notes;
       if(data.dayNotes)state.dayNotes=data.dayNotes;
+      if(data.maxStreaks)state.maxStreaks=data.maxStreaks;
       saveLocal();renderJournals();
       setSyncIndicator(t('synced'),false);
     }catch(e){setSyncIndicator(t('sync_err'),false);}
