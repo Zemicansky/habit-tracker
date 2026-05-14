@@ -650,7 +650,7 @@ function applyAction(action){if(!selectedHabitId||!selectedDate)return;const key
   const prev=state.maxStreaks[hid]||0;
   const computed=computeMaxStreak(hid);
   state.maxStreaks[hid]=Math.max(prev,computed);
-  saveLocal();renderJournals();hideActionBar();syncToGistDebounced();if(action==='done'&&state.settings.sound)playTick();}
+  saveLocal();renderJournals();hideActionBar();syncToGistDebounced();syncToSupaDebounced();if(action==='done'&&state.settings.sound)playTick();}
 
 // Compute max ever consecutive 'done' streak for a habit from its full log history
 function computeMaxStreak(hid){
@@ -961,12 +961,12 @@ function saveDayNote(){
   const noteId='dn__'+key,ex=state.notes.findIndex(n=>n.id===noteId);
   const no={id:noteId,text:'📌 '+(h?h.name:'')+'\n'+d.toLocaleDateString(lang==='en'?'en-US':'ru-RU',{day:'numeric',month:'long',year:'numeric'})+'\n\n'+text,date:new Date(+parts[0],+parts[1]-1,+parts[2],12).toISOString(),habitId:_dnHabitId,dayDate:_dnDate};
   if(ex>=0)state.notes[ex]=no;else state.notes.unshift(no);
-  saveLocal();renderJournals();closeModal('modal-day-note');syncToGistDebounced();
+  saveLocal();renderJournals();closeModal('modal-day-note');syncToGistDebounced();syncToSupaDebounced();
 }
 function deleteDayNote(){
   if(!_dnHabitId||!_dnDate)return;if(!confirm(t('confirm_delete_note')))return;
   const key=dayNoteKey(_dnHabitId,_dnDate);delete state.dayNotes[key];state.notes=state.notes.filter(n=>n.id!=='dn__'+key);
-  saveLocal();renderJournals();closeModal('modal-day-note');syncToGistDebounced();
+  saveLocal();renderJournals();closeModal('modal-day-note');syncToGistDebounced();syncToSupaDebounced();
 }
 document.getElementById('day-note-input').addEventListener('input',function(){const l=Math.min(this.value.length,500);this.value=this.value.slice(0,500);document.getElementById('day-note-chars').textContent=l+' / 500';});
 
@@ -981,7 +981,7 @@ function openAddHabit(){editingHabitId=null;document.getElementById('modal-habit
 function openEditHabit(id){const h=state.habits.find(h=>h.id===id);if(!h)return;editingHabitId=id;document.getElementById('modal-habit-title').textContent=t('edit_habit');document.getElementById('habit-name-input').value=h.name;document.getElementById('habit-goal-input').value=h.goal||'';document.getElementById('btn-delete-habit').style.display='block';selectedTag=h.tag||'';updateTagUI(selectedTag);openModal('modal-habit');}
 function updateTagUI(tag){document.querySelectorAll('#tag-grid .tag-option').forEach(btn=>btn.classList.toggle('selected',btn.dataset.tag===tag));}
 document.querySelectorAll('#tag-grid .tag-option').forEach(btn=>btn.addEventListener('click',()=>{selectedTag=btn.dataset.tag;updateTagUI(selectedTag);}));
-function saveHabit(){const name=document.getElementById('habit-name-input').value.trim();if(!name){document.getElementById('habit-name-input').focus();return;}const goal=document.getElementById('habit-goal-input').value.trim();if(editingHabitId){const h=state.habits.find(h=>h.id===editingHabitId);if(h){h.name=name;h.tag=selectedTag;h.goal=goal;}}else state.habits.push({id:Date.now().toString(),name,tag:selectedTag,goal,archived:false,createdAt:new Date().toISOString()});saveLocal();renderJournals();closeModal('modal-habit');syncToGistDebounced();}
+function saveHabit(){const name=document.getElementById('habit-name-input').value.trim();if(!name){document.getElementById('habit-name-input').focus();return;}const goal=document.getElementById('habit-goal-input').value.trim();if(editingHabitId){const h=state.habits.find(h=>h.id===editingHabitId);if(h){h.name=name;h.tag=selectedTag;h.goal=goal;}}else state.habits.push({id:Date.now().toString(),name,tag:selectedTag,goal,archived:false,createdAt:new Date().toISOString()});saveLocal();renderJournals();closeModal('modal-habit');syncToGistDebounced();syncToSupaDebounced();}
 function deleteHabit(){if(!editingHabitId)return;if(!confirm(t('confirm_delete_habit')))return;state.habits=state.habits.filter(h=>h.id!==editingHabitId);saveLocal();renderJournals();closeModal('modal-habit');}
 
 // ── JOURNAL LIST ──────────────────────────────────────────────
@@ -1068,11 +1068,12 @@ async function loadFromGist(token, gistId){
   if(!token)throw new Error('NO_TOKEN');
   if(!gistId)throw new Error('NO_GIST');
   const authHeader=token.startsWith('github_pat_')?`Bearer ${token}`:`token ${token}`;
-  const res=await fetch(`https://api.github.com/gists/${gistId}`,{
+  const res=await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`,{
     headers:{
       'Authorization':authHeader,
       'Accept':'application/vnd.github+json',
-      'X-GitHub-Api-Version':'2022-11-28'
+      'X-GitHub-Api-Version':'2022-11-28',
+      'Cache-Control':'no-cache'
     }});
   if(res.status===401||res.status===403)throw new Error('AUTH');
   if(res.status===404)throw new Error('NOT_FOUND');
@@ -1186,6 +1187,126 @@ function addDemoData(){
   saveLocal();
 }
 
+// ── SUPABASE SYNC ─────────────────────────────────────────────
+const SUPA_URL='https://srsyaaeqpmifdpxixxrd.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNyc3lhYWVxcG1pZmRweGl4eHJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDY3OTEsImV4cCI6MjA5NDI4Mjc5MX0.BUm0W6l6qVZ-uQvAeBl62UuX47zlb_9uHkVx9J-Qg7o';
+const SUPA_ROW='all_devices'; // единая запись для всех устройств пользователя
+
+function getDeviceId(){
+  let id=localStorage.getItem('habitDeviceId');
+  if(!id){id='dev_'+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('habitDeviceId',id);}
+  return id;
+}
+
+async function supaLoad(){
+  if(!navigator.onLine)return null;
+  try{
+    const res=await fetch(`${SUPA_URL}/rest/v1/habit_sync?device_id=eq.${SUPA_ROW}&select=data,updated_at`,{
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Cache-Control':'no-cache'}
+    });
+    if(!res.ok)return null;
+    const rows=await res.json();
+    if(!rows||!rows.length)return null;
+    return rows[0]; // {data:{...}, updated_at:'...'}
+  }catch(e){return null;}
+}
+
+async function supaUpload(payload){
+  if(!navigator.onLine)return false;
+  try{
+    const body={device_id:SUPA_ROW,data:payload,updated_at:new Date().toISOString()};
+    const res=await fetch(`${SUPA_URL}/rest/v1/habit_sync`,{
+      method:'POST',
+      headers:{
+        'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+        'Content-Type':'application/json',
+        'Prefer':'resolution=merge-duplicates'
+      },
+      body:JSON.stringify(body)
+    });
+    return res.ok||res.status===201||res.status===204;
+  }catch(e){return false;}
+}
+
+// Разрешение конфликтов:
+// - logs: union (объединяем, локальные перезаписывают удалённые — не теряем офлайн-данные)
+// - habits/notes/dayNotes: из более нового источника по timestamp
+// - maxStreaks: берём максимум из обоих
+function mergeSupa(local,remote){
+  const localTime=new Date(localStorage.getItem('habitUpdatedAt')||0);
+  const remoteTime=new Date(remote.updated_at||0);
+  const newer=localTime>=remoteTime;
+  const merged={};
+  merged.habits=newer?local.habits:(remote.data.habits||local.habits);
+  merged.logs=Object.assign({},remote.data.logs||{},local.logs);
+  merged.notes=newer?local.notes:(remote.data.notes||local.notes||[]);
+  merged.dayNotes=newer?local.dayNotes:(remote.data.dayNotes||local.dayNotes||{});
+  // maxStreaks — всегда берём максимум из обоих источников
+  merged.maxStreaks={};
+  const allIds=new Set([
+    ...(local.habits||[]).map(h=>h.id),
+    ...((remote.data.habits)||[]).map(h=>h.id)
+  ]);
+  allIds.forEach(id=>{
+    merged.maxStreaks[id]=Math.max(local.maxStreaks&&local.maxStreaks[id]||0,(remote.data.maxStreaks&&remote.data.maxStreaks[id])||0);
+  });
+  return merged;
+}
+
+async function supaInitSync(){
+  if(!navigator.onLine)return;
+  try{
+    setSyncIndicator(t('syncing'),true);
+    const remote=await supaLoad();
+    if(!remote){
+      // Нет данных в БД — загружаем локальные данные туда
+      const payload={..._buildPayload(),updatedAt:new Date().toISOString()};
+      await supaUpload(payload);
+      setSyncIndicator(t('synced'),false);
+      setTimeout(()=>setSyncIndicator('',false),3000);
+      return;
+    }
+    const local=_buildPayload();
+    const merged=mergeSupa(local,remote);
+    // Применяем смерженные данные в state (не трогаем settings и credentials)
+    state.habits=merged.habits;
+    state.logs=merged.logs;
+    state.notes=merged.notes;
+    state.dayNotes=merged.dayNotes;
+    state.maxStreaks=merged.maxStreaks;
+    const nowIso=new Date().toISOString();
+    localStorage.setItem('habitUpdatedAt',nowIso);
+    saveLocal(); // сохраняем в habitState2 — существующий ключ
+    renderJournals();
+    // Отдаём смерженное обратно на сервер
+    await supaUpload({...merged,updatedAt:nowIso});
+    setSyncIndicator(t('synced'),false);
+    setTimeout(()=>setSyncIndicator('',false),3000);
+  }catch(e){
+    setSyncIndicator(t('sync_err'),false);
+    setTimeout(()=>setSyncIndicator('',false),3000);
+  }
+}
+
+let supaTimer=null;
+function syncToSupaDebounced(){
+  clearTimeout(supaTimer);
+  supaTimer=setTimeout(async()=>{
+    if(!navigator.onLine)return;
+    const nowIso=new Date().toISOString();
+    localStorage.setItem('habitUpdatedAt',nowIso);
+    const payload={..._buildPayload(),updatedAt:nowIso};
+    await supaUpload(payload);
+  },2500);
+}
+
+// Синхронизировать при появлении сети (офлайн → онлайн)
+window.addEventListener('online',()=>{
+  setSyncIndicator(t('syncing'),true);
+  supaInitSync();
+});
+// ── / SUPABASE SYNC ───────────────────────────────────────────
+
 // ── INIT ──────────────────────────────────────────────────────
 async function init(){
   loadLocal();addDemoData();renderJournals();updateTranslations();
@@ -1207,6 +1328,8 @@ async function init(){
     }catch(e){setSyncIndicator(t('sync_err'),false);}
     setTimeout(()=>setSyncIndicator('',false),3000);
   }
+  // Supabase sync — основная БД (работает параллельно с Gist, не зависит от него)
+  await supaInitSync();
 }
 init();
 </script>
