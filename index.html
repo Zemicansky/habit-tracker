@@ -129,14 +129,17 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .day-cell:active:not(.future){transform:scale(.9);}
 .day-cell .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.22);}
 .day-cell.done .dot,.day-cell.missed .dot,.day-cell.skipped .dot{background:rgba(255,255,255,.55);}
-.month-grid{display:grid;grid-template-columns:repeat(auto-fill,28px);gap:3px;}
-.month-cell{width:28px;height:28px;border-radius:5px;background:var(--gray-cell);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;}
+.month-grid{display:flex;flex-wrap:nowrap;gap:1px;width:100%;background:var(--bg);border-radius:6px;overflow:hidden;}
+#month-day-numbers{display:none;flex-wrap:nowrap;gap:1px;width:100%;padding:4px 12px 0;overflow:hidden;}
+.month-day-num{flex:1;min-width:0;font-size:8px;color:var(--text3);text-align:center;font-weight:500;line-height:1.4;}
+.month-day-num.today{color:var(--accent);font-weight:700;}
+.month-cell{flex:1;min-width:0;height:26px;border-radius:0;background:var(--gray-cell);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;}
 .month-cell.done{background:var(--green);}
 .month-cell.missed{background:var(--red);}
 .month-cell.skipped{background:#48484a;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.07) 0px,rgba(255,255,255,0.07) 2px,transparent 2px,transparent 7px);}
 .month-cell.future{opacity:.22;cursor:default;}
 .month-cell.today{box-shadow:0 0 0 2px var(--accent);}
-.month-cell .dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.22);}
+.month-cell .dot{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.22);}
 .month-cell.done .dot,.month-cell.missed .dot,.month-cell.skipped .dot{background:rgba(255,255,255,.55);}
 .day-cell.has-note::after,.month-cell.has-note::after{content:'';position:absolute;bottom:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--accent);pointer-events:none;}
 
@@ -324,6 +327,9 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 
   <!-- DATE ROW (month only) -->
   <div class="date-row" id="date-row" style="display:none"></div>
+
+  <!-- DAY NUMBERS ROW (month only, compact) -->
+  <div id="month-day-numbers" style="display:none"></div>
 
   <!-- FILTER -->
   <div class="filter-bar" style="justify-content:space-between">
@@ -782,6 +788,7 @@ function renderWeek(){
   
   document.getElementById('progress-bar-row').style.display='none';
   document.getElementById('date-row').style.display='none';
+  const mdn=document.getElementById('month-day-numbers');if(mdn)mdn.style.display='none';
   if(periodOffset===0){if(focusedDay){const inW=days.some(d=>dateKey(d)===focusedDay);if(!inW)focusedDay=null;}}
   else{const inW=focusedDay&&days.some(d=>dateKey(d)===focusedDay);if(!inW)focusedDay=dateKey(days[0]);}
   renderDayStrip(days);renderHabits(days,'week');
@@ -809,9 +816,10 @@ function renderMonth(){
   document.getElementById('progress-bar-row').style.display='flex';
   document.getElementById('pb-done').style.width=(done/total*100).toFixed(1)+'%';
   document.getElementById('pb-missed').style.width=(missed/total*100).toFixed(1)+'%';
-  const dateRow=document.getElementById('date-row');dateRow.style.display='flex';dateRow.innerHTML='';
-  const ds=t('days_short');
-  days.forEach(d=>{const el=document.createElement('div');el.className='date-day'+(isToday(d)?' today':'');el.innerHTML=`<span class="day-letter">${ds[d.getDay()]}</span><span class="day-number">${d.getDate()}</span>`;dateRow.appendChild(el);});
+  document.getElementById('date-row').style.display='none';
+  // Render compact day-numbers row above habit list
+  const dateRow=document.getElementById('month-day-numbers');if(dateRow){dateRow.style.display='flex';dateRow.innerHTML='';
+  days.forEach(d=>{const el=document.createElement('div');el.className='month-day-num'+(isToday(d)?' today':'');el.textContent=d.getDate();dateRow.appendChild(el);});}
   renderHabits(days,'month');
 }
 
@@ -1232,358 +1240,153 @@ function renderSetup(){
 }
 function toggleSetting(key){state.settings[key]=!state.settings[key];saveLocal();renderSetup();}
 
-// ══════════════════════════════════════════════════════════════
-// ── GIST SYNC ENGINE v2 ───────────────────────────────────────
-// ══════════════════════════════════════════════════════════════
-//
-// АРХИТЕКТУРА:
-//  • Токен и gistId хранятся ТОЛЬКО в localStorage ('gistToken', 'gistId')
-//    Они НИКОГДА не попадают в payload и не перезаписываются при загрузке данных.
-//  • state.settings не содержит токен/gistId — только поведенческие настройки.
-//  • Авто-синхронизация читает creds из localStorage, не из UI-полей.
-//  • Защита от параллельных запросов (_syncLock).
-//  • Retry при сетевых ошибках (не при 4xx).
-//  • Offline-queue: при недоступности Gist изменения копятся в localStorage
-//    и отправляются при следующем успешном соединении.
-//
-// КАК СОЗДАТЬ GIST ВРУЧНУЮ:
-//  1. Зайдите на https://gist.github.com
-//  2. Создайте файл с именем  habits-data.json  и содержимым:
-//     {"habits":[],"logs":{},"notes":[],"dayNotes":{},"maxStreaks":{}}
-//  3. Нажмите «Create secret gist» (или public — не важно).
-//  4. Скопируйте ID из URL: gist.github.com/<user>/<THIS_IS_THE_ID>
-//  5. Токен: github.com → Settings → Developer settings →
-//     Personal access tokens → Tokens (classic) → Generate new token
-//     Права: поставьте галочку «gist» — больше ничего не нужно.
-// ──────────────────────────────────────────────────────────────
-
-// ── Хранение credentials (изолированно от данных) ──────────────
-function _saveCredentials(token, gistId) {
-  // Сохраняем только если значение не пустое, чтобы не затирать старое
-  if (token)  localStorage.setItem('gistToken',  token.trim());
-  if (gistId) localStorage.setItem('gistId',     gistId.trim());
+// ── GIST ──────────────────────────────────────────────────────
+// Token and GistId are stored SEPARATELY in localStorage under their own keys
+// so they are NEVER overwritten when loading data from the cloud.
+function _saveCredentials(token, gistId){
+  if(token)localStorage.setItem('gistToken', token);
+  if(gistId)localStorage.setItem('gistId', gistId);
 }
-
-function _loadCredentials() {
-  return {
-    token:  (localStorage.getItem('gistToken')  || '').trim(),
-    gistId: (localStorage.getItem('gistId')     || '').trim()
+function _loadCredentials(){
+  return{
+    token: localStorage.getItem('gistToken')||'',
+    gistId: localStorage.getItem('gistId')||''
   };
 }
-
-// Читаем из UI-полей и синхронизируем с localStorage (вызывается только
-// из ручных кнопок в настройках, НЕ из авто-синхронизации)
-function _gistCreds() {
-  const inputToken  = (document.getElementById('gh-token')   ?.value || '').trim();
-  const inputGistId = (document.getElementById('gh-gist-id') ?.value || '').trim();
-  const saved = _loadCredentials();
-  const token  = inputToken  || saved.token;
-  const gistId = inputGistId || saved.gistId;
+function _gistCreds(){
+  // Read from input fields first, fall back to dedicated localStorage keys
+  const inputToken=(document.getElementById('gh-token').value||'').trim();
+  const inputGistId=(document.getElementById('gh-gist-id').value||'').trim();
+  const saved=_loadCredentials();
+  const token=inputToken||saved.token;
+  const gistId=inputGistId||saved.gistId;
+  // Always persist to dedicated keys and to UI fields
   _saveCredentials(token, gistId);
-  // Обновляем UI, если поля доступны
-  const tEl = document.getElementById('gh-token');
-  const gEl = document.getElementById('gh-gist-id');
-  if (tEl && token)  tEl.value  = token;
-  if (gEl && gistId) gEl.value = gistId;
-  return { token, gistId };
+  if(token&&document.getElementById('gh-token'))document.getElementById('gh-token').value=token;
+  if(gistId&&document.getElementById('gh-gist-id'))document.getElementById('gh-gist-id').value=gistId;
+  return{token, gistId};
 }
-
-// ── Payload — данные БЕЗ credentials и без lang/settings ───────
-// settings.gistId и settings.ghToken убраны из стейта, поэтому
-// просто исключаем весь блок settings из payload.
-function _buildPayload() {
-  return {
-    habits:     state.habits,
-    logs:       state.logs,
-    notes:      state.notes,
-    dayNotes:   state.dayNotes,
-    maxStreaks:  state.maxStreaks
-    // settings — намеренно НЕ включаем (credentials остаются только локально)
-  };
+// Data payload NEVER includes settings — credentials stay local only
+function _buildPayload(){
+  return{habits:state.habits, logs:state.logs, notes:state.notes, dayNotes:state.dayNotes, maxStreaks:state.maxStreaks};
 }
-
-// ── Формирование Authorization-заголовка ───────────────────────
-function _authHeader(token) {
-  // Поддержка classic (ghp_) и fine-grained (github_pat_) токенов
-  return token.startsWith('github_pat_') ? `Bearer ${token}` : `token ${token}`;
-}
-
-// ── Низкоуровневый fetch с retry ────────────────────────────────
-// retries: количество повторных попыток при сетевых сбоях (не 4xx/5xx)
-async function _fetchWithRetry(url, options, retries = 2) {
-  let lastError;
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const res = await fetch(url, options);
-      return res; // возвращаем Response — проверку статуса делает вызывающий код
-    } catch (networkErr) {
-      // fetch() бросает только при сетевой ошибке (нет соединения, DNS и т.д.)
-      lastError = networkErr;
-      if (attempt < retries) {
-        // Экспоненциальная задержка: 1s, 2s
-        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-      }
-    }
-  }
-  throw new Error('NETWORK'); // все попытки исчерпаны
-}
-
-// ── PATCH: сохранить данные в существующий Gist ─────────────────
-// Исправление главного бага: GitHub не требует ETag/SHA для PATCH /gists/{id}.
-// Файл просто обновляется по содержимому. Старый баг был в том, что
-// credentials перезаписывались при merge данных из облака, и следующий
-// saveToGist вызывался с пустым token/gistId.
-async function saveToGist(token, gistId, data) {
-  if (!token)  throw new Error('NO_TOKEN');
-  if (!gistId) throw new Error('NO_GIST');
-
-  const res = await _fetchWithRetry(
-    `https://api.github.com/gists/${gistId}`,
-    {
-      method: 'PATCH',
-      headers: {
-        'Authorization':        _authHeader(token),
-        'Content-Type':         'application/json',
-        'Accept':               'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
-      },
-      body: JSON.stringify({
-        files: {
-          'habits-data.json': { content: JSON.stringify(data, null, 2) }
-        }
-      })
-    }
-  );
-
-  // Обработка HTTP-ошибок
-  if (res.status === 401 || res.status === 403) throw new Error('AUTH');
-  if (res.status === 404) throw new Error('NOT_FOUND');
-  if (res.status === 422) throw new Error('INVALID');
-  if (res.status === 429) throw new Error('RATE_LIMIT');
-  if (!res.ok) throw new Error('HTTP_' + res.status);
-
+async function saveToGist(token, gistId, data){
+  if(!token)throw new Error('NO_TOKEN');
+  if(!gistId)throw new Error('NO_GIST');
+  // Support both ghp_ (classic) and github_pat_ (fine-grained) tokens
+  const authHeader=token.startsWith('github_pat_')?`Bearer ${token}`:`token ${token}`;
+  const res=await fetch(`https://api.github.com/gists/${gistId}`,{method:'PATCH',
+    headers:{
+      'Authorization':authHeader,
+      'Content-Type':'application/json',
+      'Accept':'application/vnd.github+json',
+      'X-GitHub-Api-Version':'2022-11-28'
+    },
+    body:JSON.stringify({files:{'habits-data.json':{content:JSON.stringify(data,null,2)}}})});
+  if(res.status===401||res.status===403)throw new Error('AUTH');
+  if(res.status===404)throw new Error('NOT_FOUND');
+  if(res.status===422)throw new Error('INVALID');
+  if(!res.ok)throw new Error('ERR_'+res.status);
   return await res.json();
 }
-
-// ── GET: загрузить данные из Gist ──────────────────────────────
-async function loadFromGist(token, gistId) {
-  if (!token)  throw new Error('NO_TOKEN');
-  if (!gistId) throw new Error('NO_GIST');
-
-  const res = await _fetchWithRetry(
-    `https://api.github.com/gists/${gistId}`,
-    {
-      headers: {
-        'Authorization':        _authHeader(token),
-        'Accept':               'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        // Cache-Control: no-cache гарантирует свежие данные при каждом GET
-        'Cache-Control':        'no-cache'
-      }
-    }
-  );
-
-  if (res.status === 401 || res.status === 403) throw new Error('AUTH');
-  if (res.status === 404) throw new Error('NOT_FOUND');
-  if (res.status === 429) throw new Error('RATE_LIMIT');
-  if (!res.ok) throw new Error('HTTP_' + res.status);
-
-  const gistData = await res.json();
-
-  // Поддержка обоих имён файла: habits-data.json (новое) и habits.json (старое)
-  const fileContent =
-    gistData.files['habits-data.json']?.content ||
-    gistData.files['habits.json']?.content;
-
-  if (!fileContent) throw new Error('NO_FILE');
-
-  let parsed;
-  try {
-    parsed = JSON.parse(fileContent);
-  } catch {
-    throw new Error('PARSE_ERROR');
-  }
-  return parsed;
+async function loadFromGist(token, gistId){
+  if(!token)throw new Error('NO_TOKEN');
+  if(!gistId)throw new Error('NO_GIST');
+  const authHeader=token.startsWith('github_pat_')?`Bearer ${token}`:`token ${token}`;
+  const res=await fetch(`https://api.github.com/gists/${gistId}`,{
+    headers:{
+      'Authorization':authHeader,
+      'Accept':'application/vnd.github+json',
+      'X-GitHub-Api-Version':'2022-11-28'
+    }});
+  if(res.status===401||res.status===403)throw new Error('AUTH');
+  if(res.status===404)throw new Error('NOT_FOUND');
+  if(!res.ok)throw new Error('ERR_'+res.status);
+  const data=await res.json();
+  const fileContent=data.files['habits-data.json']?.content||data.files['habits.json']?.content;
+  if(!fileContent)throw new Error('NO_FILE');
+  return JSON.parse(fileContent);
 }
-
-// ── POST: создать новый Gist ────────────────────────────────────
-async function createNewGist(token, data) {
-  if (!token) throw new Error('NO_TOKEN');
-
-  const res = await _fetchWithRetry(
-    'https://api.github.com/gists',
-    {
-      method: 'POST',
-      headers: {
-        'Authorization':        _authHeader(token),
-        'Content-Type':         'application/json',
-        'Accept':               'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
-      },
-      body: JSON.stringify({
-        description: 'Habit Tracker Data',
-        public: false, // приватный gist — данные не индексируются
-        files: {
-          'habits-data.json': { content: JSON.stringify(data, null, 2) }
-        }
-      })
-    }
-  );
-
-  if (res.status === 401 || res.status === 403) throw new Error('AUTH');
-  if (res.status === 422) throw new Error('INVALID');
-  if (!res.ok) throw new Error('HTTP_' + res.status);
-
+async function createNewGist(token, data){
+  if(!token)throw new Error('NO_TOKEN');
+  const authHeader=token.startsWith('github_pat_')?`Bearer ${token}`:`token ${token}`;
+  const res=await fetch('https://api.github.com/gists',{method:'POST',
+    headers:{
+      'Authorization':authHeader,
+      'Content-Type':'application/json',
+      'Accept':'application/vnd.github+json',
+      'X-GitHub-Api-Version':'2022-11-28'
+    },
+    body:JSON.stringify({description:'Habit Tracker Data',public:false,
+      files:{'habits-data.json':{content:JSON.stringify(data,null,2)}}})});
+  if(res.status===401||res.status===403)throw new Error('AUTH');
+  if(!res.ok)throw new Error('ERR_'+res.status);
   return await res.json();
 }
-
-// ── Человекочитаемые сообщения об ошибках ──────────────────────
-function _gistErrMsg(e) {
-  if (!navigator.onLine)          return '🚫 Нет соединения с интернетом';
-  if (e.message === 'NETWORK')    return '🚫 Сетевая ошибка — проверьте соединение';
-  if (e.message === 'AUTH')       return '🔑 Ошибка авторизации — проверьте токен';
-  if (e.message === 'NOT_FOUND')  return '❌ Gist не найден — проверьте ID';
-  if (e.message === 'NO_TOKEN')   return '⚠️ Введите GitHub Token';
-  if (e.message === 'NO_GIST')    return '⚠️ Введите Gist ID';
-  if (e.message === 'NO_FILE')    return '⚠️ Файл habits-data.json не найден в Gist';
-  if (e.message === 'PARSE_ERROR')return '⚠️ Файл в Gist повреждён — не удалось распарсить JSON';
-  if (e.message === 'RATE_LIMIT') return '⏳ Превышен лимит запросов GitHub API — подождите минуту';
-  return '❌ Ошибка: ' + e.message;
+function _gistErrMsg(e){
+  if(!navigator.onLine)return'🚫 Нет соединения';
+  if(e.message==='AUTH')return'🔑 Ошибка авторизации — проверьте токен';
+  if(e.message==='NOT_FOUND')return'❌ Gist не найден — проверьте ID';
+  if(e.message==='NO_TOKEN')return'⚠️ Введите GitHub Token';
+  if(e.message==='NO_GIST')return'⚠️ Введите Gist ID';
+  if(e.message==='NO_FILE')return'⚠️ Файл habits-data.json не найден в Gist';
+  return'❌ Ошибка: '+e.message;
 }
-
-// ── Merge: безопасное слияние данных из Gist в state ───────────
-// КРИТИЧЕСКИ ВАЖНО: НЕ трогаем settings, token, gistId, lang
-function _mergeFromCloud(data) {
-  if (data.habits    !== undefined) state.habits    = data.habits;
-  if (data.logs      !== undefined) state.logs      = data.logs;
-  if (data.notes     !== undefined) state.notes     = data.notes;
-  if (data.dayNotes  !== undefined) state.dayNotes  = data.dayNotes;
-  if (data.maxStreaks!== undefined) state.maxStreaks = data.maxStreaks;
-  // state.settings — намеренно НЕ трогаем
-}
-
-// ── Ручные кнопки: Upload / Download / Create ──────────────────
-async function gistUpload() {
-  const { token, gistId } = _gistCreds(); // из UI → сохраняем в localStorage
-  showGistStatus('Выгружаем...', 'loading');
-  try {
+async function gistUpload(){
+  const{token,gistId}=_gistCreds();
+  showGistStatus('Выгружаем...','loading');
+  try{
     await saveToGist(token, gistId, _buildPayload());
-    showGistStatus('✅ Данные выгружены в Gist', 'ok');
-  } catch (e) {
-    showGistStatus(_gistErrMsg(e), 'err');
-  }
+    showGistStatus('✅ Данные выгружены в Gist','ok');
+  }catch(e){showGistStatus(_gistErrMsg(e),'err');}
 }
-
-async function gistDownload() {
-  const { token, gistId } = _gistCreds(); // из UI → сохраняем в localStorage
-  showGistStatus('Загружаем...', 'loading');
-  try {
-    const data = await loadFromGist(token, gistId);
-    _mergeFromCloud(data);
-    saveLocal();
-    renderJournals();
-    showGistStatus('✅ Данные загружены из Gist', 'ok');
-  } catch (e) {
-    showGistStatus(_gistErrMsg(e), 'err');
-  }
+async function gistDownload(){
+  const{token,gistId}=_gistCreds();
+  showGistStatus('Загружаем...','loading');
+  try{
+    const data=await loadFromGist(token, gistId);
+    // Merge habits/logs/notes only — NEVER touch credentials or lang settings
+    if(data.habits)state.habits=data.habits;
+    if(data.logs)state.logs=data.logs;
+    if(data.notes)state.notes=data.notes;
+    if(data.dayNotes)state.dayNotes=data.dayNotes;
+    if(data.maxStreaks)state.maxStreaks=data.maxStreaks;
+    saveLocal();renderJournals();
+    showGistStatus('✅ Данные загружены из Gist','ok');
+  }catch(e){showGistStatus(_gistErrMsg(e),'err');}
 }
-
-async function gistCreate() {
-  const { token } = _gistCreds();
-  if (!token) { showGistStatus('⚠️ Введите GitHub Token', 'err'); return; }
-  showGistStatus('Создаём Gist...', 'loading');
-  try {
-    const result = await createNewGist(token, _buildPayload());
-    // Сохраняем новый gistId в изолированное хранилище
+async function gistCreate(){
+  const{token}=_gistCreds();
+  if(!token){showGistStatus('⚠️ Введите GitHub Token','err');return;}
+  showGistStatus('Создаём Gist...','loading');
+  try{
+    const result=await createNewGist(token, _buildPayload());
     _saveCredentials(token, result.id);
-    const gEl = document.getElementById('gh-gist-id');
-    if (gEl) gEl.value = result.id;
-    showGistStatus('✅ Gist создан! ID: ' + result.id, 'ok');
-  } catch (e) {
-    showGistStatus(_gistErrMsg(e), 'err');
-  }
+    if(document.getElementById('gh-gist-id'))document.getElementById('gh-gist-id').value=result.id;
+    saveLocal();
+    showGistStatus('✅ Gist создан: '+result.id,'ok');
+  }catch(e){showGistStatus(_gistErrMsg(e),'err');}
 }
-
-// Legacy aliases (для обратной совместимости с вызовами в коде)
-async function saveGistSettings() { await gistUpload(); }
-async function syncToGist()       { await gistUpload(); }
-
-// ── Авто-синхронизация (debounced) ─────────────────────────────
-// Вызывается при каждом изменении данных (applyAction, saveHabit и т.д.)
-//
-// ИСПРАВЛЕНИЕ ОСНОВНОГО БАГА:
-//  • _loadCredentials() — НЕ читаем из UI-полей, только из localStorage.
-//    Это значит авто-sync работает даже если страница настроек закрыта
-//    или пользователь на другой вкладке.
-//  • _syncLock предотвращает параллельные PATCH-запросы (race condition).
-//    Если синхронизация уже идёт, новая попытка откладывается ещё раз.
-//  • При ошибке данные остаются в localStorage как кеш и будут отправлены
-//    при следующем вызове syncToGistDebounced.
-
-let _gistTimer  = null;   // ID debounce-таймера
-let _syncLock   = false;  // флаг: синхронизация в процессе
-let _pendingSync = false; // флаг: пришёл новый запрос пока шла синхронизация
-
-function syncToGistDebounced() {
-  clearTimeout(_gistTimer);
-  _gistTimer = setTimeout(_runSync, 2000); // 2 сек задержки для батчинга изменений
+// Legacy aliases
+async function saveGistSettings(){await gistUpload();}
+async function syncToGist(){await gistUpload();}
+// Debounced auto-sync: reads creds from dedicated localStorage keys — no UI dependency
+let gistTimer=null;
+function syncToGistDebounced(){
+  clearTimeout(gistTimer);
+  gistTimer=setTimeout(async()=>{
+    const{token,gistId}=_loadCredentials(); // use saved creds, NOT input fields
+    if(!token||!gistId)return;
+    setSyncIndicator(t('syncing'),true);
+    try{
+      await saveToGist(token, gistId, _buildPayload());
+      setSyncIndicator(t('synced'),false);
+    }catch(e){setSyncIndicator(t('sync_err'),false);}
+    setTimeout(()=>setSyncIndicator('',false),3000);
+  },2000);
 }
-
-async function _runSync() {
-  // Защита от параллельных запросов
-  if (_syncLock) {
-    _pendingSync = true; // запомним, что нужно синхронизироваться повторно
-    return;
-  }
-
-  const { token, gistId } = _loadCredentials(); // ТОЛЬКО из localStorage!
-  if (!token || !gistId) return; // credentials не заданы — тихо пропускаем
-
-  _syncLock = true;
-  _pendingSync = false;
-  setSyncIndicator(t('syncing'), true);
-
-  try {
-    await saveToGist(token, gistId, _buildPayload());
-    setSyncIndicator(t('synced'), false);
-    // Сбросить индикатор через 3 сек
-    setTimeout(() => setSyncIndicator('', false), 3000);
-  } catch (e) {
-    // При ошибке данные остаются в localStorage (кеш).
-    // Следующий вызов syncToGistDebounced повторит попытку.
-    const isOffline = !navigator.onLine || e.message === 'NETWORK';
-    setSyncIndicator(isOffline ? t('offline') : t('sync_err'), false);
-    setTimeout(() => setSyncIndicator('', false), 4000);
-  } finally {
-    _syncLock = false;
-    // Если пришёл новый запрос пока шла синхронизация — повторяем
-    if (_pendingSync) {
-      _gistTimer = setTimeout(_runSync, 500);
-    }
-  }
-}
-
-// ── UI helpers ─────────────────────────────────────────────────
-function setSyncIndicator(msg, loading) {
-  const el = document.getElementById('sync-indicator');
-  if (!el) return;
-  el.textContent = msg;
-  el.className = 'sync-indicator' + (loading ? ' syncing' : '');
-}
-
-function showGistStatus(msg, type) {
-  const el = document.getElementById('gist-status');
-  if (!el) return;
-  el.textContent = msg;
-  el.className = 'gist-status ' + type;
-  el.style.display = 'block';
-}
-
-// ── Синхронизация при восстановлении соединения ────────────────
-window.addEventListener('online', () => {
-  // Соединение восстановлено — отправляем накопленные изменения
-  syncToGistDebounced();
-});
+function setSyncIndicator(msg,loading){const el=document.getElementById('sync-indicator');el.textContent=msg;el.className='sync-indicator'+(loading?' syncing':'');}
+function showGistStatus(msg,type){const el=document.getElementById('gist-status');el.textContent=msg;el.className='gist-status '+type;el.style.display='block';}
 
 // ── EXPORT / IMPORT ───────────────────────────────────────────
 function exportData(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`habits_${dateKey(new Date())}.json`;a.click();}
