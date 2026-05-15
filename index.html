@@ -125,7 +125,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .day-cell.skipped{background:#48484a;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.07) 0px,rgba(255,255,255,0.07) 3px,transparent 3px,transparent 9px);}
 .day-cell.future{opacity:.28;cursor:default;}
 .day-cell.today{box-shadow:0 0 0 2px var(--accent);}
-.day-cell.selected-col{box-shadow:0 0 0 2px rgba(245,166,35,.45);}
+.day-cell.selected-col{}
 .day-cell:active:not(.future){transform:scale(.9);}
 .day-cell .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.22);}
 .day-cell.done .dot,.day-cell.missed .dot,.day-cell.skipped .dot{background:rgba(255,255,255,.55);}
@@ -320,15 +320,15 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 
   
 
-  <!-- DAY STRIP (week only) -->
-  <div class="day-strip" id="day-strip"></div>
-
-  <!-- PROGRESS BAR (month only) -->
+  <!-- PROGRESS BAR (week + month) -->
   <div class="progress-bar-row" id="progress-bar-row" style="display:none">
     <div class="progress-bar-done"   id="pb-done"   style="width:0%"></div>
     <div class="progress-bar-missed" id="pb-missed" style="width:0%"></div>
     <div class="progress-bar-empty"></div>
   </div>
+
+  <!-- DAY STRIP (week only) -->
+  <div class="day-strip" id="day-strip"></div>
 
   <!-- DATE ROW (month only) -->
   <div class="date-row" id="date-row" style="display:none"></div>
@@ -874,7 +874,7 @@ function renderHabits(days,mode){
     // Max streak: always from persisted value — never decreases
     const maxStreak=state.maxStreaks[habit.id]||0;
     const maxBadgeHtml=`<div class="max-streak-badge"><span class="max-streak-icon">🏆</span><span class="max-streak-num">${maxStreak}</span></div>`;
-    card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${habit.name}</div>${habit.tag||habit.goal?`<div class="habit-sub">${[habit.tag,habit.goal].filter(Boolean).join(' · ')}</div>`:''}</div><div class="streak-wrap"><div class="streak-badge ${bc}"><span class="streak-num">${counter}</span></div>${maxBadgeHtml}</div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div>${mode==='month'?`<div class="month-arrow-wrap" id="arrow-wrap-${habit.id}"><div class="month-arrow" id="arrow-${habit.id}" style="display:none"></div></div>`:''}`;
+    card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${habit.name}</div>${habit.tag||habit.goal?`<div class="habit-sub">${[habit.tag,habit.goal].filter(Boolean).join(' · ')}</div>`:''}</div><div class="streak-wrap"><div class="streak-badge ${bc}"><span class="streak-num">${counter}</span></div>${maxBadgeHtml}</div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div><div class="month-arrow-wrap" id="arrow-wrap-${habit.id}"><div class="month-arrow" id="arrow-${habit.id}" style="display:none"></div></div>`;
     let pressTimer=null;
     card.addEventListener('touchstart',e=>{pressTimer=setTimeout(()=>showContextMenu(e,habit.id),600);},{passive:true});
     card.addEventListener('touchend',()=>clearTimeout(pressTimer));
@@ -893,17 +893,17 @@ function renderHabits(days,mode){
       if(!isFuture(d))cell.addEventListener('click',e=>{
         e.stopPropagation();
         showActionBar(habit.id,dateKey(d));
+        // Move arrow to this cell (both week and month)
+        const arrow=document.getElementById('arrow-'+habit.id);
+        const wrap=document.getElementById('arrow-wrap-'+habit.id);
+        if(arrow&&wrap){
+          const cellRect=cell.getBoundingClientRect();
+          const wrapRect=wrap.getBoundingClientRect();
+          const centerX=cellRect.left+cellRect.width/2-wrapRect.left;
+          arrow.style.display='block';
+          arrow.style.left=centerX+'px';
+        }
         if(mode==='month'){
-          // Move arrow to this cell
-          const arrow=document.getElementById('arrow-'+habit.id);
-          const wrap=document.getElementById('arrow-wrap-'+habit.id);
-          if(arrow&&wrap){
-            const cellRect=cell.getBoundingClientRect();
-            const wrapRect=wrap.getBoundingClientRect();
-            const centerX=cellRect.left+cellRect.width/2-wrapRect.left;
-            arrow.style.display='block';
-            arrow.style.left=centerX+'px';
-          }
           // Highlight selected cell
           document.querySelectorAll('#grid-'+habit.id+' .month-cell').forEach(c=>c.classList.remove('month-selected'));
           cell.classList.add('month-selected');
