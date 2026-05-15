@@ -141,6 +141,11 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .month-cell.today{box-shadow:0 0 0 2px var(--accent);}
 .month-cell .dot{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.22);}
 .month-cell.done .dot,.month-cell.missed .dot,.month-cell.skipped .dot{background:rgba(255,255,255,.55);}
+
+/* Month selected-day arrow indicator */
+.month-arrow-wrap{position:relative;height:10px;width:100%;overflow:visible;pointer-events:none;margin-top:2px;}
+.month-arrow{position:absolute;top:0;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--accent);transform:translateX(-50%);transition:left .25s cubic-bezier(.34,1.4,.64,1);filter:drop-shadow(0 1px 3px rgba(245,166,35,.5));will-change:left;}
+.month-cell.month-selected{outline:2px solid var(--accent);outline-offset:-2px;z-index:2;}
 .day-cell.has-note::after,.month-cell.has-note::after{content:'';position:absolute;bottom:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--accent);pointer-events:none;}
 
 /* ACTION BAR */
@@ -721,7 +726,13 @@ function goToday(){periodOffset=0;focusedDay=null;hideActionBar();renderJournals
 // ── ACTION BAR ────────────────────────────────────────────────
 function getDateDowStr(dateStr){const d=new Date(dateStr+'T00:00:00');const dows=t('days_week');const idx=(d.getDay()+6)%7;return dows[idx];}
 function showActionBar(habitId,dateStr){selectedHabitId=habitId;selectedDate=dateStr;const h=state.habits.find(h=>h.id===habitId);const dow=getDateDowStr(dateStr);document.getElementById('action-bar-hint').textContent=(h?.name||'')+' · '+dateStr+' ('+dow+')';document.getElementById('action-bar').classList.add('visible');}
-function hideActionBar(){document.getElementById('action-bar').classList.remove('visible');selectedHabitId=null;selectedDate=null;}
+function hideActionBar(){
+  document.getElementById('action-bar').classList.remove('visible');
+  // Hide all month arrows and selections
+  document.querySelectorAll('.month-arrow').forEach(a=>a.style.display='none');
+  document.querySelectorAll('.month-selected').forEach(c=>c.classList.remove('month-selected'));
+  selectedHabitId=null;selectedDate=null;
+}
 function applyAction(action){if(!selectedHabitId||!selectedDate)return;const key=selectedHabitId+'_'+selectedDate;if(action==='erase')delete state.logs[key];else state.logs[key]=action;
   // Recompute and persist max streak from full history (never decreases)
   const hid=selectedHabitId;
@@ -853,7 +864,7 @@ function renderHabits(days,mode){
     // Max streak: always from persisted value — never decreases
     const maxStreak=state.maxStreaks[habit.id]||0;
     const maxBadgeHtml=`<div class="max-streak-badge"><span class="max-streak-icon">🏆</span><span class="max-streak-num">${maxStreak}</span></div>`;
-    card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${habit.name}</div>${habit.tag||habit.goal?`<div class="habit-sub">${[habit.tag,habit.goal].filter(Boolean).join(' · ')}</div>`:''}</div><div class="streak-wrap"><div class="streak-badge ${bc}"><span class="streak-num">${counter}</span></div>${maxBadgeHtml}</div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div>`;
+    card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${habit.name}</div>${habit.tag||habit.goal?`<div class="habit-sub">${[habit.tag,habit.goal].filter(Boolean).join(' · ')}</div>`:''}</div><div class="streak-wrap"><div class="streak-badge ${bc}"><span class="streak-num">${counter}</span></div>${maxBadgeHtml}</div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div>${mode==='month'?`<div class="month-arrow-wrap" id="arrow-wrap-${habit.id}"><div class="month-arrow" id="arrow-${habit.id}" style="display:none"></div></div>`:''}`;
     let pressTimer=null;
     card.addEventListener('touchstart',e=>{pressTimer=setTimeout(()=>showContextMenu(e,habit.id),600);},{passive:true});
     card.addEventListener('touchend',()=>clearTimeout(pressTimer));
@@ -869,7 +880,25 @@ function renderHabits(days,mode){
       if(mode==='week'&&ci===focusedColIdx&&!isToday(d))cell.classList.add('selected-col');
       if(state.dayNotes[dayNoteKey(habit.id,dateKey(d))])cell.classList.add('has-note');
       const dot=document.createElement('div');dot.className='dot';cell.appendChild(dot);
-      if(!isFuture(d))cell.addEventListener('click',e=>{e.stopPropagation();showActionBar(habit.id,dateKey(d));});
+      if(!isFuture(d))cell.addEventListener('click',e=>{
+        e.stopPropagation();
+        showActionBar(habit.id,dateKey(d));
+        if(mode==='month'){
+          // Move arrow to this cell
+          const arrow=document.getElementById('arrow-'+habit.id);
+          const wrap=document.getElementById('arrow-wrap-'+habit.id);
+          if(arrow&&wrap){
+            const cellRect=cell.getBoundingClientRect();
+            const wrapRect=wrap.getBoundingClientRect();
+            const centerX=cellRect.left+cellRect.width/2-wrapRect.left;
+            arrow.style.display='block';
+            arrow.style.left=centerX+'px';
+          }
+          // Highlight selected cell
+          document.querySelectorAll('#grid-'+habit.id+' .month-cell').forEach(c=>c.classList.remove('month-selected'));
+          cell.classList.add('month-selected');
+        }
+      });
       grid.appendChild(cell);
     });
   });
