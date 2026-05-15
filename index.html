@@ -796,8 +796,18 @@ function weekLbl(){
 function renderWeek(){
   const days=getWeekDays(periodOffset),lbl=weekLbl();
   document.getElementById('header-title').textContent=lbl;
-  
-  document.getElementById('progress-bar-row').style.display='none';
+
+  // Progress bar for the week
+  const habits=state.habits.filter(h=>!h.archived);
+  let done=0,missed=0;
+  const today=new Date();
+  const pastDays=days.filter(d=>d<=today);
+  habits.forEach(h=>pastDays.forEach(d=>{const v=state.logs[h.id+'_'+dateKey(d)];if(v==='done')done++;else if(v==='missed')missed++;}));
+  const total=habits.length*pastDays.length||1;
+  document.getElementById('progress-bar-row').style.display='flex';
+  document.getElementById('pb-done').style.width=(done/total*100).toFixed(1)+'%';
+  document.getElementById('pb-missed').style.width=(missed/total*100).toFixed(1)+'%';
+
   document.getElementById('date-row').style.display='none';
   const mdn=document.getElementById('month-day-numbers');if(mdn)mdn.style.display='none';
   if(periodOffset===0){if(focusedDay){const inW=days.some(d=>dateKey(d)===focusedDay);if(!inW)focusedDay=null;}}
@@ -830,7 +840,7 @@ function renderMonth(){
   document.getElementById('date-row').style.display='none';
   // Render compact day-numbers row above habit list
   const dateRow=document.getElementById('month-day-numbers');if(dateRow){dateRow.style.display='flex';dateRow.innerHTML='';
-  days.forEach(d=>{const el=document.createElement('div');el.className='month-day-num'+(isToday(d)?' today':'');el.textContent=d.getDate();dateRow.appendChild(el);});}
+  days.forEach(d=>{const el=document.createElement('div');el.className='month-day-num'+(isToday(d)&&periodOffset===0?' today':'');el.textContent=d.getDate();dateRow.appendChild(el);});}
   renderHabits(days,'month');
 }
 
@@ -875,7 +885,7 @@ function renderHabits(days,mode){
       const cell=document.createElement('div');cell.className=cc;
       const val=state.logs[habit.id+'_'+dateKey(d)]||'';
       if(val==='done')cell.classList.add('done');else if(val==='missed')cell.classList.add('missed');else if(val==='skipped')cell.classList.add('skipped');
-      if(isToday(d))cell.classList.add('today');
+      if(isToday(d)&&periodOffset===0)cell.classList.add('today');
       if(isFuture(d))cell.classList.add('future');
       if(mode==='week'&&ci===focusedColIdx&&!isToday(d))cell.classList.add('selected-col');
       if(state.dayNotes[dayNoteKey(habit.id,dateKey(d))])cell.classList.add('has-note');
