@@ -283,6 +283,47 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .sync-indicator{font-size:11px;color:var(--text3);text-align:center;padding:4px;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 .sync-indicator.syncing{color:var(--accent);animation:pulse 1s infinite;}
+
+/* ── ЗАДАЧА 1: Reorder во вкладке All Habits ── */
+.all-habits-tab-header{display:flex;gap:6px;margin-bottom:14px;}
+.ah-tab-btn{flex:1;padding:10px;border-radius:12px;border:none;background:var(--card2);color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;}
+.ah-tab-btn.active{background:var(--accent);color:#000;}
+.reorder-list{display:flex;flex-direction:column;gap:8px;}
+.reorder-item{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:12px;padding:12px 14px;cursor:grab;transition:box-shadow .2s,opacity .2s;}
+.reorder-item.dragging{opacity:.45;box-shadow:0 8px 32px rgba(0,0,0,.5);}
+.reorder-item.drag-over{box-shadow:0 0 0 2px var(--accent);}
+.reorder-drag-handle{font-size:18px;color:var(--text3);cursor:grab;flex-shrink:0;touch-action:none;}
+.reorder-name{flex:1;font-size:15px;font-weight:500;color:var(--text);}
+.reorder-archived-badge{font-size:10px;background:var(--card2);color:var(--text3);padding:2px 8px;border-radius:8px;flex-shrink:0;}
+.reorder-arrows{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+.reorder-arrow-btn{width:28px;height:22px;border:none;background:var(--card2);color:var(--text2);border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;line-height:1;}
+.reorder-arrow-btn:active{background:var(--accent);color:#000;}
+.reorder-arrow-btn:disabled{opacity:.25;cursor:default;}
+.reorder-save-row{margin-top:12px;}
+
+/* ── ЗАДАЧА 2: Кнопка "В архив" в модале редактирования ── */
+.btn-archive{background:#4A5568;color:#fff;margin-top:8px;}
+.btn-archive:active{background:#2D3748;}
+
+/* ── ЗАДАЧА 3: Улучшенный Notes ── */
+.note-card-v2{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+.note-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:8px;}
+.note-card-habit{font-size:12px;font-weight:700;color:var(--accent);line-height:1.3;}
+.note-card-date{font-size:11px;color:var(--text3);margin-top:1px;}
+.note-card-actions{display:flex;gap:6px;flex-shrink:0;}
+.note-action-btn{width:30px;height:30px;border:none;border-radius:8px;background:var(--card2);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.note-action-btn:active{background:var(--card);opacity:.7;}
+.note-action-btn.delete-btn{color:var(--red);}
+.note-card-text{font-size:14px;color:var(--text);line-height:1.55;white-space:pre-wrap;}
+.note-group-header{font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:12px 4px 6px;}
+/* Inline edit for notes */
+.note-inline-edit{width:100%;background:var(--card2);border:1px solid var(--accent);border-radius:10px;padding:10px;color:var(--text);font-size:14px;resize:none;min-height:80px;outline:none;font-family:inherit;margin-top:8px;}
+.note-inline-actions{display:flex;gap:8px;margin-top:8px;}
+.note-inline-btn{flex:1;padding:8px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;}
+.note-inline-save{background:var(--accent);color:#000;}
+.note-inline-cancel{background:var(--card2);color:var(--text2);}
+/* Modal for editing note in popup */
+#modal-edit-note .note-textarea{height:140px;}
 </style>
 </head>
 <body>
@@ -556,6 +597,8 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
     </div>
     <div class="form-group"><label>Цель (опционально)</label><input type="text" id="habit-goal-input" placeholder="Например: 30 раз / каждый день"></div>
     <button class="btn btn-primary" onclick="saveHabit()">Сохранить</button>
+    <!-- ЗАДАЧА 2: Кнопка архивирования (между Сохранить и Удалить) -->
+    <button class="btn btn-archive" id="btn-archive-habit" onclick="archiveHabitFromModal()" style="display:none">📦 В архив</button>
     <button class="btn btn-danger" id="btn-delete-habit" onclick="deleteHabit()" style="display:none">Удалить привычку</button>
     <button class="btn btn-ghost"  onclick="closeModal('modal-habit')">Отмена</button>
   </div>
@@ -571,7 +614,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
   </div>
 </div>
 
-<!-- MODAL: NOTE -->
+<!-- MODAL: NOTE (add general note) -->
 <div class="modal-overlay" id="modal-note">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -579,6 +622,19 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
     <textarea class="note-textarea" id="note-input" placeholder="Запишите мысль..."></textarea>
     <button class="btn btn-primary" onclick="saveNote()">Сохранить</button>
     <button class="btn btn-ghost"   onclick="closeModal('modal-note')">Отмена</button>
+  </div>
+</div>
+
+<!-- ЗАДАЧА 3: MODAL: Редактирование заметки -->
+<div class="modal-overlay" id="modal-edit-note">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>Редактировать заметку</h2>
+    <div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:4px" id="edit-note-habit-name"></div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px" id="edit-note-date-label"></div>
+    <textarea class="note-textarea" id="edit-note-input" style="height:140px" placeholder="Текст заметки..."></textarea>
+    <button class="btn btn-primary" onclick="saveEditedNote()">Сохранить</button>
+    <button class="btn btn-ghost"   onclick="closeModal('modal-edit-note')">Отмена</button>
   </div>
 </div>
 
@@ -849,6 +905,8 @@ function renderHabits(days,mode){
   list.classList.remove('anim');void list.offsetWidth;list.classList.add('anim');
   list.innerHTML='';
   let habits=state.habits.filter(h=>!h.archived);
+  // ЗАДАЧА 1: применяем сохранённый порядок
+  habits=getOrderedHabits(habits);
   if(currentFilter!=='all')habits=habits.filter(h=>h.tag===currentFilter);
   if(!habits.length){list.innerHTML=`<div class="empty-state"><div class="emoji">🎯</div><h3>${t('no_habits')}</h3><p>${t('add_habit')}</p></div>`;return;}
   const focusedKey=focusedDay||(periodOffset===0?todayKey():null);
@@ -893,6 +951,9 @@ function renderHabits(days,mode){
       if(!isFuture(d))cell.addEventListener('click',e=>{
         e.stopPropagation();
         showActionBar(habit.id,dateKey(d));
+        // Hide all arrows and selections across all habits first
+        document.querySelectorAll('.month-arrow').forEach(a=>a.style.display='none');
+        document.querySelectorAll('.month-selected').forEach(c=>c.classList.remove('month-selected'));
         // Move arrow to this cell (both week and month)
         const arrow=document.getElementById('arrow-'+habit.id);
         const wrap=document.getElementById('arrow-wrap-'+habit.id);
@@ -1235,30 +1296,283 @@ function deleteDayNote(){
 document.getElementById('day-note-input').addEventListener('input',function(){const l=Math.min(this.value.length,500);this.value=this.value.slice(0,500);document.getElementById('day-note-chars').textContent=l+' / 500';});
 
 // ── NOTES ─────────────────────────────────────────────────────
+// ЗАДАЧА 3: улучшенный рендер заметок с карточками, редактированием и удалением
 function openAddNote(){document.getElementById('note-input').value='';openModal('modal-note');setTimeout(()=>document.getElementById('note-input').focus(),300);}
-function saveNote(){const text=document.getElementById('note-input').value.trim();if(!text)return;state.notes.unshift({id:Date.now().toString(),text,date:new Date().toISOString()});saveLocal();renderNotes();closeModal('modal-note');}
-function renderNotes(){const list=document.getElementById('notes-list');if(!state.notes.length){list.innerHTML=`<div class="empty-state"><div class="emoji">📝</div><h3>${t('no_notes')}</h3><p>${t('add_note')}</p></div>`;return;}list.innerHTML=state.notes.map(n=>`<div class="note-card" onclick="deleteNote('${n.id}')"><div class="note-date">${new Date(n.date).toLocaleDateString(lang==='en'?'en':'ru',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div><div class="note-text">${n.text.replace(/\n/g,'<br>')}</div></div>`).join('');}
-function deleteNote(id){if(!confirm(t('confirm_delete_note')))return;state.notes=state.notes.filter(n=>n.id!==id);saveLocal();renderNotes();}
+function saveNote(){const text=document.getElementById('note-input').value.trim();if(!text)return;state.notes.unshift({id:Date.now().toString(),text,date:new Date().toISOString()});saveLocal();renderNotes();closeModal('modal-note');syncToGistDebounced();}
+
+let _editingNoteId=null;
+function renderNotes(){
+  const list=document.getElementById('notes-list');
+  if(!state.notes.length){
+    list.innerHTML=`<div class="empty-state"><div class="emoji">📝</div><h3>${t('no_notes')}</h3><p>${t('add_note')}</p></div>`;return;
+  }
+  // Сортируем по дате: последние сверху
+  const sorted=[...state.notes].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  list.innerHTML='';
+  // Группируем по дате (день)
+  const groups={};
+  sorted.forEach(n=>{
+    const d=new Date(n.date),key=d.toLocaleDateString(lang==='en'?'en-GB':'ru-RU',{day:'numeric',month:'long',year:'numeric'});
+    if(!groups[key])groups[key]=[];
+    groups[key].push(n);
+  });
+  Object.entries(groups).forEach(([dateLabel,notes])=>{
+    const gh=document.createElement('div');gh.className='note-group-header';gh.textContent=dateLabel;list.appendChild(gh);
+    notes.forEach(n=>{
+      // Определяем заголовок (имя привычки если есть)
+      const habitId=n.habitId;
+      const habit=habitId?state.habits.find(h=>h.id===habitId):null;
+      let displayText=n.text;
+      let habitLabel=habit?habit.name:'';
+      // Если текст начинается с "📌 Имя\n..." (формат dayNote) — очищаем для отображения
+      if(n.id&&n.id.startsWith('dn__')&&displayText.startsWith('📌 ')){
+        const lines=displayText.split('\n');
+        habitLabel=habitLabel||(lines[0].replace('📌 ',''));
+        // Убираем первые 3 строки (имя + дата + пустая)
+        displayText=lines.slice(3).join('\n').trim()||lines.join('\n');
+      }
+      const card=document.createElement('div');card.className='note-card-v2';card.dataset.nid=n.id;
+      const timeStr=new Date(n.date).toLocaleTimeString(lang==='en'?'en-GB':'ru-RU',{hour:'2-digit',minute:'2-digit'});
+      card.innerHTML=`
+        <div class="note-card-header">
+          <div style="flex:1;min-width:0">
+            ${habitLabel?`<div class="note-card-habit">${habitLabel}</div>`:''}
+            <div class="note-card-date">${timeStr}</div>
+          </div>
+          <div class="note-card-actions">
+            <button class="note-action-btn edit-btn" onclick="openEditNote('${n.id}')" title="Редактировать">✏️</button>
+            <button class="note-action-btn delete-btn" onclick="deleteNote('${n.id}')" title="Удалить">🗑</button>
+          </div>
+        </div>
+        <div class="note-card-text">${escapeHtml(displayText)}</div>`;
+      list.appendChild(card);
+    });
+  });
+}
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function deleteNote(id){
+  if(!confirm(t('confirm_delete_note')))return;
+  // Если это dayNote — удаляем также из dayNotes
+  const n=state.notes.find(n=>n.id===id);
+  if(n&&n.id.startsWith('dn__')){
+    const key=n.id.replace('dn__','');
+    delete state.dayNotes[key];
+    renderJournals();
+  }
+  state.notes=state.notes.filter(n=>n.id!==id);
+  saveLocal();renderNotes();syncToGistDebounced();
+}
+// ЗАДАЧА 3: открыть попап редактирования заметки
+function openEditNote(id){
+  const n=state.notes.find(n=>n.id===id);if(!n)return;
+  _editingNoteId=id;
+  const habitId=n.habitId;
+  const habit=habitId?state.habits.find(h=>h.id===habitId):null;
+  document.getElementById('edit-note-habit-name').textContent=habit?habit.name:'';
+  document.getElementById('edit-note-date-label').textContent=new Date(n.date).toLocaleDateString(lang==='en'?'en-GB':'ru-RU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  // Если dayNote — показываем только пользовательский текст
+  let editText=n.text;
+  if(n.id.startsWith('dn__')&&editText.startsWith('📌 ')){
+    const lines=editText.split('\n');editText=lines.slice(3).join('\n').trim()||editText;
+  }
+  document.getElementById('edit-note-input').value=editText;
+  openModal('modal-edit-note');
+  setTimeout(()=>document.getElementById('edit-note-input').focus(),300);
+}
+function saveEditedNote(){
+  if(!_editingNoteId)return;
+  const newText=document.getElementById('edit-note-input').value.trim();
+  if(!newText){closeModal('modal-edit-note');return;}
+  const n=state.notes.find(n=>n.id===_editingNoteId);
+  if(!n){closeModal('modal-edit-note');return;}
+  // Для dayNote — обновляем также dayNotes и сохраняем формат
+  if(n.id.startsWith('dn__')){
+    const key=n.id.replace('dn__','');
+    state.dayNotes[key]=newText;
+    const habit=n.habitId?state.habits.find(h=>h.id===n.habitId):null;
+    const parts=n.dayDate?n.dayDate.split('-'):[];
+    const dateStr=parts.length===3?new Date(+parts[0],+parts[1]-1,+parts[2]).toLocaleDateString(lang==='en'?'en-US':'ru-RU',{day:'numeric',month:'long',year:'numeric'}):'';
+    n.text='📌 '+(habit?habit.name:'')+'\n'+dateStr+'\n\n'+newText;
+  } else {
+    n.text=newText;
+  }
+  saveLocal();renderNotes();renderJournals();closeModal('modal-edit-note');syncToGistDebounced();
+  _editingNoteId=null;
+}
 
 // ── HABIT MODAL ───────────────────────────────────────────────
-function openAddHabit(){editingHabitId=null;document.getElementById('modal-habit-title').textContent=t('new_habit');document.getElementById('habit-name-input').value='';document.getElementById('habit-goal-input').value='';document.getElementById('btn-delete-habit').style.display='none';selectedTag='';updateTagUI('');openModal('modal-habit');setTimeout(()=>document.getElementById('habit-name-input').focus(),300);}
-function openEditHabit(id){const h=state.habits.find(h=>h.id===id);if(!h)return;editingHabitId=id;document.getElementById('modal-habit-title').textContent=t('edit_habit');document.getElementById('habit-name-input').value=h.name;document.getElementById('habit-goal-input').value=h.goal||'';document.getElementById('btn-delete-habit').style.display='block';selectedTag=h.tag||'';updateTagUI(selectedTag);openModal('modal-habit');}
+function openAddHabit(){editingHabitId=null;document.getElementById('modal-habit-title').textContent=t('new_habit');document.getElementById('habit-name-input').value='';document.getElementById('habit-goal-input').value='';document.getElementById('btn-delete-habit').style.display='none';document.getElementById('btn-archive-habit').style.display='none';selectedTag='';updateTagUI('');openModal('modal-habit');setTimeout(()=>document.getElementById('habit-name-input').focus(),300);}
+function openEditHabit(id){const h=state.habits.find(h=>h.id===id);if(!h)return;editingHabitId=id;document.getElementById('modal-habit-title').textContent=t('edit_habit');document.getElementById('habit-name-input').value=h.name;document.getElementById('habit-goal-input').value=h.goal||'';document.getElementById('btn-delete-habit').style.display='block';
+  // ЗАДАЧА 2: кнопка архива — показываем только если не архивная
+  const archBtn=document.getElementById('btn-archive-habit');
+  if(archBtn){archBtn.style.display=h.archived?'none':'block';archBtn.textContent=h.archived?'♻️ Восстановить':'📦 В архив';}
+  selectedTag=h.tag||'';updateTagUI(selectedTag);openModal('modal-habit');}
+// ЗАДАЧА 2: архивирование прямо из модала редактирования
+function archiveHabitFromModal(){
+  if(!editingHabitId)return;
+  const h=state.habits.find(h=>h.id===editingHabitId);
+  if(!h)return;
+  h.archived=!h.archived; // toggle
+  saveLocal();renderJournals();closeModal('modal-habit');syncToGistDebounced();
+}
 function updateTagUI(tag){document.querySelectorAll('#tag-grid .tag-option').forEach(btn=>btn.classList.toggle('selected',btn.dataset.tag===tag));}
 document.querySelectorAll('#tag-grid .tag-option').forEach(btn=>btn.addEventListener('click',()=>{selectedTag=btn.dataset.tag;updateTagUI(selectedTag);}));
 function saveHabit(){const name=document.getElementById('habit-name-input').value.trim();if(!name){document.getElementById('habit-name-input').focus();return;}const goal=document.getElementById('habit-goal-input').value.trim();if(editingHabitId){const h=state.habits.find(h=>h.id===editingHabitId);if(h){h.name=name;h.tag=selectedTag;h.goal=goal;}}else state.habits.push({id:Date.now().toString(),name,tag:selectedTag,goal,archived:false,createdAt:new Date().toISOString()});saveLocal();renderJournals();closeModal('modal-habit');syncToGistDebounced();}
 function deleteHabit(){if(!editingHabitId)return;if(!confirm(t('confirm_delete_habit')))return;state.habits=state.habits.filter(h=>h.id!==editingHabitId);saveLocal();renderJournals();closeModal('modal-habit');}
 
-// ── JOURNAL LIST ──────────────────────────────────────────────
+// ── JOURNAL LIST (с вкладками: "All habits" + Reorder) ────────
+// ЗАДАЧА 1: habitsOrder хранится в localStorage отдельно от Gist
+function loadHabitsOrder(){
+  try{const s=localStorage.getItem('habitsOrder');return s?JSON.parse(s):null;}catch(e){return null;}
+}
+function saveHabitsOrder(order){localStorage.setItem('habitsOrder',JSON.stringify(order));}
+// Применяем порядок к массиву привычек (только для отображения — не меняем state.habits)
+function getOrderedHabits(habitsArr){
+  const order=loadHabitsOrder();
+  if(!order||!order.length)return habitsArr;
+  const ordered=[],rest=[];
+  order.forEach(id=>{const h=habitsArr.find(h=>h.id===id);if(h)ordered.push(h);});
+  habitsArr.forEach(h=>{if(!order.includes(h.id))rest.push(h);});
+  return [...ordered,...rest];
+}
+
+let _journalTab='habits'; // 'habits' | 'reorder'
 function openJournalList(){
-  const c=document.getElementById('journal-list-content');c.innerHTML='';
-  const active=state.habits.filter(h=>!h.archived),arch=state.habits.filter(h=>h.archived);
-  if(active.length){c.innerHTML+=`<div style="font-size:12px;color:var(--text3);text-transform:uppercase;padding:8px 0 6px;font-weight:600">${t('archived_label')}</div>`;active.forEach(h=>{c.innerHTML+=`<div style="padding:12px 0;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between" onclick="openEditHabit('${h.id}');closeModal('modal-journals')"><span style="font-size:15px">${h.name}</span><span style="font-size:13px;color:var(--text3)">${h.tag||''}</span></div>`;});}
-  if(arch.length){c.innerHTML+=`<div style="font-size:12px;color:var(--text3);text-transform:uppercase;padding:12px 0 6px;font-weight:600">${t('archived')}</div>`;arch.forEach(h=>{c.innerHTML+=`<div style="padding:12px 0;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between"><span style="font-size:15px;color:var(--text3)">${h.name}</span><button onclick="unarchiveHabit('${h.id}')" style="font-size:12px;background:var(--accent);color:#000;border:none;border-radius:8px;padding:6px 12px;cursor:pointer">${t('restore')}</button></div>`;});}
+  _journalTab='habits';
+  _renderJournalModal();
   openModal('modal-journals');
 }
-function unarchiveHabit(id){const h=state.habits.find(h=>h.id===id);if(h){h.archived=false;saveLocal();renderJournals();openJournalList();}}
+function _renderJournalModal(){
+  const c=document.getElementById('journal-list-content');
+  c.innerHTML='';
+  if(_journalTab==='habits'){_renderAllHabitsTab(c);}
+  else{_renderReorderTab(c);}
+}
+function _renderAllHabitsTab(c){
+  const orderedActive=getOrderedHabits(state.habits.filter(h=>!h.archived));
+  const arch=state.habits.filter(h=>h.archived);
+  // Tab switcher
+  c.innerHTML=`<div class="all-habits-tab-header">
+    <button class="ah-tab-btn active" onclick="switchJournalTab('habits')">Все привычки</button>
+    <button class="ah-tab-btn" onclick="switchJournalTab('reorder')">⇅ Порядок</button>
+  </div>`;
+  if(orderedActive.length){
+    c.innerHTML+=`<div style="font-size:12px;color:var(--text3);text-transform:uppercase;padding:4px 0 6px;font-weight:600">Активные</div>`;
+    orderedActive.forEach(h=>{
+      c.innerHTML+=`<div style="padding:12px 0;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="openEditHabit('${h.id}');closeModal('modal-journals')"><span style="font-size:15px">${h.name}</span><span style="font-size:13px;color:var(--text3)">${h.tag||''}</span></div>`;
+    });
+  }
+  if(arch.length){
+    c.innerHTML+=`<div style="font-size:12px;color:var(--text3);text-transform:uppercase;padding:12px 0 6px;font-weight:600">В архиве</div>`;
+    arch.forEach(h=>{
+      c.innerHTML+=`<div style="padding:12px 0;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between"><span style="font-size:15px;color:var(--text3)">${h.name}</span><button onclick="unarchiveHabit('${h.id}')" style="font-size:12px;background:var(--accent);color:#000;border:none;border-radius:8px;padding:6px 12px;cursor:pointer">${t('restore')}</button></div>`;
+    });
+  }
+}
+function _renderReorderTab(c){
+  // ЗАДАЧА 1: вкладка изменения порядка с drag & drop и кнопками ▲▼
+  const allHabits=getOrderedHabits(state.habits); // все, включая архивные
+  c.innerHTML=`<div class="all-habits-tab-header">
+    <button class="ah-tab-btn" onclick="switchJournalTab('habits')">Все привычки</button>
+    <button class="ah-tab-btn active" onclick="switchJournalTab('reorder')">⇅ Порядок</button>
+  </div>
+  <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Перетащите или нажимайте ▲▼ для изменения порядка</div>
+  <div class="reorder-list" id="reorder-list"></div>
+  <div class="reorder-save-row">
+    <button class="btn btn-primary" onclick="applyHabitsOrder()">✅ Применить порядок</button>
+  </div>`;
+  const list=document.getElementById('reorder-list');
+  allHabits.forEach((h,i)=>{
+    const item=document.createElement('div');
+    item.className='reorder-item';
+    item.dataset.id=h.id;
+    item.draggable=true;
+    item.innerHTML=`
+      <span class="reorder-drag-handle" title="Перетащить">☰</span>
+      <span class="reorder-name">${h.name}${h.archived?` <span class="reorder-archived-badge">архив</span>`:''}</span>
+      <div class="reorder-arrows">
+        <button class="reorder-arrow-btn" onclick="reorderMove('${h.id}',-1)" ${i===0?'disabled':''}>▲</button>
+        <button class="reorder-arrow-btn" onclick="reorderMove('${h.id}',1)"  ${i===allHabits.length-1?'disabled':''}>▼</button>
+      </div>`;
+    // Drag & Drop events
+    item.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',h.id);item.classList.add('dragging');});
+    item.addEventListener('dragend',()=>item.classList.remove('dragging'));
+    item.addEventListener('dragover',e=>{e.preventDefault();item.classList.add('drag-over');});
+    item.addEventListener('dragleave',()=>item.classList.remove('drag-over'));
+    item.addEventListener('drop',e=>{
+      e.preventDefault();item.classList.remove('drag-over');
+      const fromId=e.dataTransfer.getData('text/plain');
+      if(fromId===h.id)return;
+      _reorderDrop(fromId,h.id);
+    });
+    list.appendChild(item);
+  });
+  // Touch drag support
+  _initTouchReorder(list);
+}
+function switchJournalTab(tab){_journalTab=tab;_renderJournalModal();}
 
-// ── CONTEXT MENU ──────────────────────────────────────────────
+// Перемещение кнопками ▲▼
+function reorderMove(id,dir){
+  const order=getCurrentReorderOrder();
+  const idx=order.indexOf(id);if(idx<0)return;
+  const newIdx=idx+dir;
+  if(newIdx<0||newIdx>=order.length)return;
+  [order[idx],order[newIdx]]=[order[newIdx],order[idx]];
+  saveHabitsOrder(order);
+  _renderJournalModal(); // перерисовываем вкладку
+}
+function getCurrentReorderOrder(){
+  const items=document.querySelectorAll('#reorder-list .reorder-item');
+  if(items.length)return [...items].map(el=>el.dataset.id);
+  return getOrderedHabits(state.habits).map(h=>h.id);
+}
+function _reorderDrop(fromId,toId){
+  const order=getCurrentReorderOrder();
+  const fromIdx=order.indexOf(fromId),toIdx=order.indexOf(toId);
+  if(fromIdx<0||toIdx<0)return;
+  order.splice(fromIdx,1);order.splice(toIdx,0,fromId);
+  saveHabitsOrder(order);
+  _renderJournalModal();
+}
+function applyHabitsOrder(){
+  const order=getCurrentReorderOrder();
+  saveHabitsOrder(order);
+  renderJournals(); // применяем на главном экране
+  closeModal('modal-journals');
+}
+
+// Touch-drag для мобильных (swap при отпускании)
+function _initTouchReorder(list){
+  let touchItem=null,touchY=0,placeholder=null;
+  list.querySelectorAll('.reorder-drag-handle').forEach(handle=>{
+    handle.addEventListener('touchstart',e=>{
+      touchItem=handle.closest('.reorder-item');
+      touchY=e.touches[0].clientY;
+      touchItem.classList.add('dragging');
+      e.preventDefault();
+    },{passive:false});
+  });
+  document.addEventListener('touchmove',e=>{
+    if(!touchItem)return;
+    const cy=e.touches[0].clientY;
+    const items=[...list.querySelectorAll('.reorder-item:not(.dragging)')];
+    items.forEach(el=>el.classList.remove('drag-over'));
+    const target=items.find(el=>{const r=el.getBoundingClientRect();return cy>=r.top&&cy<=r.bottom;});
+    if(target)target.classList.add('drag-over');
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!touchItem)return;
+    touchItem.classList.remove('dragging');
+    const cy=e.changedTouches[0].clientY;
+    const items=[...list.querySelectorAll('.reorder-item:not(.dragging)')];
+    const target=items.find(el=>{el.classList.remove('drag-over');const r=el.getBoundingClientRect();return cy>=r.top&&cy<=r.bottom;});
+    if(target&&target!==touchItem){_reorderDrop(touchItem.dataset.id,target.dataset.id);}
+    touchItem=null;
+  });
+}
+
+function unarchiveHabit(id){const h=state.habits.find(h=>h.id===id);if(h){h.archived=false;saveLocal();renderJournals();_renderJournalModal();}}
 function showContextMenu(e,id){ctxHabitId=id;const menu=document.getElementById('context-menu');menu.classList.add('open');const touch=e.touches?e.touches[0]:e;let x=touch.clientX,y=touch.clientY;if(x+200>window.innerWidth)x=window.innerWidth-200;if(y+160>window.innerHeight)y=window.innerHeight-160;menu.style.left=x+'px';menu.style.top=y+'px';if(navigator.vibrate)navigator.vibrate(10);}
 function closeContextMenu(){document.getElementById('context-menu').classList.remove('open');ctxHabitId=null;}
 function ctxEdit(){closeContextMenu();openEditHabit(ctxHabitId);}
@@ -1441,18 +1755,10 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 // ── SOUND ─────────────────────────────────────────────────────
 function playTick(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;g.gain.setValueAtTime(0.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.15);o.start();o.stop(ctx.currentTime+0.15);}catch(e){}}
 
-// ── DEMO DATA ─────────────────────────────────────────────────
-function addDemoData(){
-  if(state.habits.length>0)return;
-  const habits=[{id:'1',name:'Турник 20 раз в день',tag:'Exercising',goal:'20 раз',archived:false,createdAt:new Date().toISOString()},{id:'2',name:'Бег',tag:'Exercising',goal:'',archived:false,createdAt:new Date().toISOString()},{id:'3',name:'Китайский',tag:'Mind',goal:'30 мин',archived:false,createdAt:new Date().toISOString()},{id:'4',name:'Казахский язык Kaizen',tag:'Mind',goal:'',archived:false,createdAt:new Date().toISOString()},{id:'5',name:'Обучение Cybersecurity',tag:'Work',goal:'',archived:false,createdAt:new Date().toISOString()}];
-  state.habits=habits;const today=new Date();
-  habits.forEach((h,hi)=>{for(let i=29;i>=0;i--){const d=new Date(today);d.setDate(today.getDate()-i);if(d>today)continue;const key=h.id+'_'+dateKey(d);if(hi===0)state.logs[key]='done';else if(hi===2)state.logs[key]=Math.random()>.25?'done':'missed';else if(hi===1)state.logs[key]=i%3===0?'done':'';else if(hi===3)state.logs[key]=Math.random()>.5?'missed':'';}});
-  saveLocal();
-}
 
 // ── INIT ──────────────────────────────────────────────────────
 async function init(){
-  loadLocal();addDemoData();renderJournals();updateTranslations();
+  loadLocal();renderJournals();updateTranslations();
   document.getElementById('lang-check-ru').style.display=lang==='ru'?'':'none';
   document.getElementById('lang-check-en').style.display=lang==='en'?'':'none';
   const{token,gistId}=_loadCredentials();
