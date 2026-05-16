@@ -68,13 +68,15 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .dd-check{color:var(--accent);font-size:16px;}
 
 /* DAY STRIP */
-.day-strip{display:flex;padding:6px 8px 4px;background:var(--bg);border-bottom:.5px solid var(--border);flex-shrink:0;user-select:none;}
-.ds-cell{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 2px;border-radius:10px;cursor:pointer;transition:background .15s;}
-.ds-cell:active{background:var(--card2);}
+.day-strip{display:flex;padding:6px 8px 4px;background:var(--bg);border-bottom:.5px solid var(--border);flex-shrink:0;user-select:none;position:relative;}
+/* v5.8: плавный индикатор выбранного дня */
+.ds-indicator{position:absolute;border-radius:10px;background:var(--card2);transition:left .28s cubic-bezier(.34,1.3,.64,1),width .28s cubic-bezier(.34,1.3,.64,1);pointer-events:none;z-index:0;top:6px;bottom:4px;}
+.ds-cell{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 2px;border-radius:10px;cursor:pointer;transition:background .15s;position:relative;z-index:1;}
+.ds-cell:active{background:rgba(255,255,255,.05);}
 .ds-cell .ds-name{font-size:11px;font-weight:500;color:var(--text3);line-height:1;}
 .ds-cell .ds-num{font-size:16px;font-weight:400;color:var(--text2);line-height:1.3;min-width:28px;text-align:center;}
-.ds-cell.ds-today .ds-num{background:var(--accent);color:#000;font-weight:700;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;}
-.ds-cell.ds-selected:not(.ds-today) .ds-num{background:var(--card2);color:var(--text);font-weight:600;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;}
+.ds-cell.ds-today .ds-num{background:var(--accent);color:#000;font-weight:700;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;transition:background .3s ease;}
+.ds-cell.ds-selected:not(.ds-today) .ds-num{background:transparent;color:var(--text);font-weight:600;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;}
 .ds-cell.ds-future .ds-name,.ds-cell.ds-future .ds-num{opacity:.35;}
 @media(max-width:340px){.ds-cell .ds-name{font-size:10px}.ds-cell .ds-num{font-size:12px}}
 
@@ -103,7 +105,9 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .habit-list.anim{animation:fadeIn .22s ease;}
 
 /* HABIT CARD */
-.habit-card{background:var(--card);border-radius:14px;padding:12px 12px 10px;}
+.habit-card{background:var(--card);border-radius:14px;padding:12px 12px 10px;transition:border-radius .2s ease;}
+/* v5.8: когда за карточкой следует открытая панель — убираем нижние скругления */
+.habit-card:has(+ .action-bar.visible){border-radius:14px 14px 0 0;}
 .habit-card:active{transform:scale(.985);}
 .habit-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .habit-name{font-size:15px;font-weight:600;color:var(--text);flex:1;margin-right:8px;line-height:1.2;}
@@ -118,8 +122,10 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .streak-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0;}
 
 /* CELLS */
-.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
-.day-cell{height:34px;border-radius:7px;background:var(--gray-cell);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:background .15s,transform .1s;}
+.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;background:var(--card2);border-radius:10px;overflow:hidden;}
+/* v5.8: тонкие вертикальные разделители между ячейками */
+.day-cell{height:34px;border-radius:0;background:var(--gray-cell);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:background .15s,transform .1s;border-right:1px solid rgba(0,0,0,.18);}
+.day-cell:last-child{border-right:none;}
 .day-cell.done{background:var(--green);}
 .day-cell.missed{background:var(--red);}
 .day-cell.skipped{background:#48484a;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.07) 0px,rgba(255,255,255,0.07) 3px,transparent 3px,transparent 9px);}
@@ -148,9 +154,35 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .month-cell.month-selected{outline:2px solid var(--accent);outline-offset:-2px;z-index:2;}
 .day-cell.has-note::after,.month-cell.has-note::after{content:'';position:absolute;bottom:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--accent);pointer-events:none;}
 
-/* ACTION BAR */
-.action-bar{position:fixed;bottom:calc(var(--safe-bottom) + 58px);left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:398px;background:#1e1e20;border-radius:20px;padding:12px 12px 14px;display:none;z-index:50;box-shadow:0 12px 40px rgba(0,0,0,.75);}
-.action-bar.visible{display:block;}
+/* ACTION BAR — v5.8 inline под карточкой привычки */
+/* Контейнер живёт внутри habit-list, вставляется после нужной карточки */
+.action-bar{
+  width:100%;
+  background:#1c1c1e;
+  border-radius:0 0 14px 14px;
+  padding:0 12px 0;
+  overflow:hidden;
+  max-height:0;
+  opacity:0;
+  pointer-events:none;
+  transition:max-height .35s cubic-bezier(.4,0,.2,1), opacity .22s ease, padding .3s ease;
+  will-change:max-height,opacity;
+}
+.action-bar.visible{
+  max-height:160px;
+  opacity:1;
+  pointer-events:auto;
+  padding:8px 12px 14px;
+}
+/* Маленькая стрелка сверху */
+.action-bar::before{
+  content:'';display:block;
+  width:0;height:0;
+  border-left:7px solid transparent;
+  border-right:7px solid transparent;
+  border-bottom:8px solid rgba(255,255,255,.08);
+  margin:0 auto 6px;
+}
 .action-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
 .action-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 4px;border-radius:16px;border:none;cursor:pointer;background:none;transition:transform .12s,opacity .12s;color:#fff;}
 .action-btn:active{transform:scale(.9);opacity:.8;}
@@ -392,6 +424,32 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
   <!-- SWIPEABLE HABIT LIST -->
   <div class="scroll-area" id="swipe-area">
     <div class="habit-list" id="habit-list"></div>
+    <!-- v5.8: action bar теперь inline, вставляется после нужной карточки через JS -->
+    <div class="action-bar" id="action-bar">
+      <div class="action-bar-hint" id="action-bar-hint">Выберите действие</div>
+      <div class="action-btns">
+        <button class="action-btn ab-erase" onclick="applyAction('erase')">
+          <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+          <span class="ab-label" data-i18n="btn_erase">Стереть</span>
+        </button>
+        <button class="action-btn ab-yes" onclick="applyAction('done')">
+          <div class="ab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="ab-label" data-i18n="btn_yes">Да</span>
+        </button>
+        <button class="action-btn ab-no" onclick="applyAction('missed')">
+          <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+          <span class="ab-label" data-i18n="btn_no">Нет</span>
+        </button>
+        <button class="action-btn ab-skip" onclick="applyAction('skipped')">
+          <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></div>
+          <span class="ab-label" data-i18n="btn_skip">Пропуск</span>
+        </button>
+        <button class="action-btn ab-note" onclick="openDayNote()">
+          <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></div>
+          <span class="ab-label" data-i18n="btn_note">Заметка</span>
+        </button>
+      </div>
+    </div>
     <div class="sync-indicator" id="sync-indicator"></div>
   </div>
 </div>
@@ -509,7 +567,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
         <div class="setup-row" onclick="importData()"><span>📥 Импорт</span><span style="color:var(--text3)">›</span></div>
         <div class="setup-row" onclick="clearAllData()"><span style="color:var(--red)">🗑 Очистить все данные</span><span style="color:var(--text3)">›</span></div>
       </div>
-      <div style="padding:16px;text-align:center"><p style="font-size:12px;color:var(--text3)">Habit Tracker v4.3</p></div>
+      <div style="padding:16px;text-align:center"><p style="font-size:12px;color:var(--text3)">Habit Tracker v5.8</p></div>
     </div>
   </div>
 </div>
@@ -533,33 +591,6 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
     <span class="nav-label">Настройки</span>
   </button>
 </nav>
-</div>
-
-<!-- ACTION BAR -->
-<div class="action-bar" id="action-bar">
-  <div class="action-bar-hint" id="action-bar-hint">Выберите действие</div>
-  <div class="action-btns">
-    <button class="action-btn ab-erase" onclick="applyAction('erase')">
-      <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
-      <span class="ab-label">Стереть</span>
-    </button>
-    <button class="action-btn ab-yes" onclick="applyAction('done')">
-      <div class="ab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-      <span class="ab-label">Да</span>
-    </button>
-    <button class="action-btn ab-no" onclick="applyAction('missed')">
-      <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
-      <span class="ab-label">Нет</span>
-    </button>
-    <button class="action-btn ab-skip" onclick="applyAction('skipped')">
-      <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></div>
-      <span class="ab-label">Пропуск</span>
-    </button>
-    <button class="action-btn ab-note" onclick="openDayNote()">
-      <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></div>
-      <span class="ab-label">Заметка</span>
-    </button>
-  </div>
 </div>
 
 <!-- MODAL: DAY NOTE -->
@@ -598,7 +629,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
     <div class="form-group"><label>Цель (опционально)</label><input type="text" id="habit-goal-input" placeholder="Например: 30 раз / каждый день"></div>
     <button class="btn btn-primary" onclick="saveHabit()">Сохранить</button>
     <!-- ЗАДАЧА 2: Кнопка архивирования (между Сохранить и Удалить) -->
-    <button class="btn btn-archive" id="btn-archive-habit" onclick="archiveHabitFromModal()" style="display:none">📦 В архив</button>
+    <button class="btn btn-archive" id="btn-archive-habit" onclick="archiveHabitFromModal()" style="display:none">В архив</button>
     <button class="btn btn-danger" id="btn-delete-habit" onclick="deleteHabit()" style="display:none">Удалить привычку</button>
     <button class="btn btn-ghost"  onclick="closeModal('modal-habit')">Отмена</button>
   </div>
@@ -781,21 +812,64 @@ function goToday(){periodOffset=0;focusedDay=null;hideActionBar();renderJournals
 
 // ── ACTION BAR ────────────────────────────────────────────────
 function getDateDowStr(dateStr){const d=new Date(dateStr+'T00:00:00');const dows=t('days_week');const idx=(d.getDay()+6)%7;return dows[idx];}
-function showActionBar(habitId,dateStr){selectedHabitId=habitId;selectedDate=dateStr;const h=state.habits.find(h=>h.id===habitId);const dow=getDateDowStr(dateStr);document.getElementById('action-bar-hint').textContent=(h?.name||'')+' · '+dateStr+' ('+dow+')';document.getElementById('action-bar').classList.add('visible');}
+function showActionBar(habitId,dateStr){
+  selectedHabitId=habitId;selectedDate=dateStr;
+  const h=state.habits.find(h=>h.id===habitId);
+  const dow=getDateDowStr(dateStr);
+  document.getElementById('action-bar-hint').textContent=(h?.name||'')+' · '+dateStr+' ('+dow+')';
+  // v5.8: перемещаем action-bar inline после карточки нужной привычки
+  const bar=document.getElementById('action-bar');
+  const card=document.querySelector(`.habit-card[data-id="${habitId}"]`);
+  // Сначала сбрасываем visible БЕЗ анимации (мгновенно), потом вставляем и раскрываем
+  bar.classList.remove('visible');
+  if(card){
+    card.after(bar);
+  }
+  // Запускаем анимацию в следующем кадре
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      bar.classList.add('visible');
+      setTimeout(()=>bar.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+    });
+  });
+}
 function hideActionBar(){
-  document.getElementById('action-bar').classList.remove('visible');
-  // Hide all month arrows and selections
+  const bar=document.getElementById('action-bar');
+  // Сразу убираем visible и возвращаем bar в дефолтное место — без setTimeout
+  // чтобы renderJournals не застал bar в промежуточном состоянии
+  bar.classList.remove('visible');
+  const sync=document.getElementById('sync-indicator');
+  if(sync) sync.parentNode?.insertBefore(bar,sync);
   document.querySelectorAll('.month-arrow').forEach(a=>a.style.display='none');
   document.querySelectorAll('.month-selected').forEach(c=>c.classList.remove('month-selected'));
   selectedHabitId=null;selectedDate=null;
 }
-function applyAction(action){if(!selectedHabitId||!selectedDate)return;const key=selectedHabitId+'_'+selectedDate;if(action==='erase')delete state.logs[key];else state.logs[key]=action;
-  // Recompute and persist max streak from full history (never decreases)
+function applyAction(action){
+  if(!selectedHabitId||!selectedDate)return;
+
   const hid=selectedHabitId;
+  const date=selectedDate;
+  const key=hid+'_'+date;
+
+  // СНАЧАЛА полностью закрываем и сбрасываем action bar,
+  // только потом делаем renderJournals(), иначе bar остаётся
+  // привязан к старому DOM и зависает при повторном открытии.
+  hideActionBar();
+
+  if(action==='erase') delete state.logs[key];
+  else state.logs[key]=action;
+
+  // Recompute and persist max streak from full history (never decreases)
   const prev=state.maxStreaks[hid]||0;
   const computed=computeMaxStreak(hid);
   state.maxStreaks[hid]=Math.max(prev,computed);
-  saveLocal();renderJournals();hideActionBar();syncToGistDebounced();if(action==='done'&&state.settings.sound)playTick();}
+
+  saveLocal();
+  renderJournals();
+  syncToGistDebounced();
+
+  if(action==='done'&&state.settings.sound) playTick();
+}
 
 // Compute max ever consecutive 'done' streak for a habit from its full log history
 function computeMaxStreak(hid){
@@ -823,13 +897,28 @@ document.addEventListener('click',e=>{
 function renderDayStrip(days){
   const strip=document.getElementById('day-strip');strip.innerHTML='';
   const todK=todayKey(),selK=focusedDay||(periodOffset===0?todK:dateKey(days[0]));
+  // v5.8: плавный индикатор выбранного дня
+  const indicator=document.createElement('div');indicator.className='ds-indicator';indicator.id='ds-indicator';
+  strip.appendChild(indicator);
+  let selectedCellIndex=-1;
   t('days_week').forEach((name,i)=>{
     const d=days[i],k=dateKey(d),cell=document.createElement('div');cell.className='ds-cell';
     if(isFuture(d))cell.classList.add('ds-future');
     if(k===todK)cell.classList.add('ds-today');else if(k===selK)cell.classList.add('ds-selected');
+    if(k===selK)selectedCellIndex=i;
     cell.innerHTML=`<span class="ds-name">${name}</span><span class="ds-num">${d.getDate()}</span>`;
     if(!isFuture(d))cell.addEventListener('click',e=>{e.stopPropagation();focusedDay=k;renderJournals();});
     strip.appendChild(cell);
+  });
+  // Позиционируем индикатор после рендера (requestAnimationFrame для CSS transition)
+  requestAnimationFrame(()=>{
+    const cells=[...strip.querySelectorAll('.ds-cell')];
+    const idx=selectedCellIndex>=0?selectedCellIndex:0;
+    if(cells[idx]){
+      const stripRect=strip.getBoundingClientRect(),cellRect=cells[idx].getBoundingClientRect();
+      indicator.style.left=(cellRect.left-stripRect.left)+'px';
+      indicator.style.width=cellRect.width+'px';
+    }
   });
   strip.style.display=viewMode==='week'?'flex':'none';
 }
@@ -1405,7 +1494,7 @@ function openAddHabit(){editingHabitId=null;document.getElementById('modal-habit
 function openEditHabit(id){const h=state.habits.find(h=>h.id===id);if(!h)return;editingHabitId=id;document.getElementById('modal-habit-title').textContent=t('edit_habit');document.getElementById('habit-name-input').value=h.name;document.getElementById('habit-goal-input').value=h.goal||'';document.getElementById('btn-delete-habit').style.display='block';
   // ЗАДАЧА 2: кнопка архива — показываем только если не архивная
   const archBtn=document.getElementById('btn-archive-habit');
-  if(archBtn){archBtn.style.display=h.archived?'none':'block';archBtn.textContent=h.archived?'♻️ Восстановить':'📦 В архив';}
+  if(archBtn){archBtn.style.display=h.archived?'none':'block';archBtn.textContent=h.archived?(lang==='en'?'Restore':'Восстановить'):(lang==='en'?'Archive':'Архив');}
   selectedTag=h.tag||'';updateTagUI(selectedTag);openModal('modal-habit');}
 // ЗАДАЧА 2: архивирование прямо из модала редактирования
 function archiveHabitFromModal(){
@@ -1686,6 +1775,9 @@ function _gistErrMsg(e){
   return'❌ Ошибка: '+e.message;
 }
 async function gistUpload(){
+  // ЗАДАЧА 3: подтверждение перед выгрузкой
+  const msg=lang==='en'?'Are you sure? Data in Gist may be overwritten.':'Вы уверены? Данные могут быть перезаписаны или потеряны.';
+  if(!confirm(msg))return;
   const{token,gistId}=_gistCreds();
   showGistStatus('Выгружаем...','loading');
   try{
@@ -1694,6 +1786,9 @@ async function gistUpload(){
   }catch(e){showGistStatus(_gistErrMsg(e),'err');}
 }
 async function gistDownload(){
+  // ЗАДАЧА 3: подтверждение перед загрузкой
+  const msg=lang==='en'?'Are you sure? Local data may be overwritten by Gist data.':'Вы уверены? Данные могут быть перезаписаны или потеряны.';
+  if(!confirm(msg))return;
   const{token,gistId}=_gistCreds();
   showGistStatus('Загружаем...','loading');
   try{
@@ -1709,6 +1804,9 @@ async function gistDownload(){
   }catch(e){showGistStatus(_gistErrMsg(e),'err');}
 }
 async function gistCreate(){
+  // ЗАДАЧА 3: подтверждение перед созданием нового Gist
+  const msg=lang==='en'?'Are you sure? A new Gist will be created and current Gist ID will be replaced.':'Вы уверены? Данные могут быть перезаписаны или потеряны.';
+  if(!confirm(msg))return;
   const{token}=_gistCreds();
   if(!token){showGistStatus('⚠️ Введите GitHub Token','err');return;}
   showGistStatus('Создаём Gist...','loading');
