@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#323235">
 <meta name="msapplication-navbutton-color" content="#323235">
-<title>Habit Tracker</title>
+<title>Habit Tracker v5.9</title>
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%231a1a1c'/%3E%3Ccircle cx='90' cy='90' r='62' fill='%2328a745'/%3E%3Cpolyline points='54,92 78,116 126,64' fill='none' stroke='white' stroke-width='13' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -130,7 +130,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .day-cell.missed{background:var(--red);}
 .day-cell.skipped{background:#48484a;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.07) 0px,rgba(255,255,255,0.07) 3px,transparent 3px,transparent 9px);}
 .day-cell.future{opacity:.28;cursor:default;}
-.day-cell.today{box-shadow:0 0 0 2px var(--accent);}
+.day-cell.today{}
 .day-cell.selected-col{}
 .day-cell:active:not(.future){transform:scale(.9);}
 .day-cell .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.22);}
@@ -144,7 +144,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .month-cell.missed{background:var(--red);}
 .month-cell.skipped{background:#48484a;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.07) 0px,rgba(255,255,255,0.07) 2px,transparent 2px,transparent 7px);}
 .month-cell.future{opacity:.22;cursor:default;}
-.month-cell.today{box-shadow:0 0 0 2px var(--accent);}
+.month-cell.today{}
 .month-cell .dot{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.22);}
 .month-cell.done .dot,.month-cell.missed .dot,.month-cell.skipped .dot{background:rgba(255,255,255,.55);}
 
@@ -567,7 +567,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
         <div class="setup-row" onclick="importData()"><span>📥 Импорт</span><span style="color:var(--text3)">›</span></div>
         <div class="setup-row" onclick="clearAllData()"><span style="color:var(--red)">🗑 Очистить все данные</span><span style="color:var(--text3)">›</span></div>
       </div>
-      <div style="padding:16px;text-align:center"><p style="font-size:12px;color:var(--text3)">Habit Tracker v5.8</p></div>
+      <div style="padding:16px;text-align:center"><p style="font-size:12px;color:var(--text3)">Habit Tracker v5.9</p></div>
     </div>
   </div>
 </div>
@@ -776,7 +776,7 @@ function getMonthDays(off=0){const n=new Date(),rawM=n.getMonth()+off,y=n.getFul
 
 // ── STORAGE ───────────────────────────────────────────────────
 function saveLocal(){localStorage.setItem('habitState2',JSON.stringify(state));}
-function loadLocal(){const r=localStorage.getItem('habitState2');if(r){try{const p=JSON.parse(r);state={...state,...p};if(!state.dayNotes)state.dayNotes={};if(!state.maxStreaks)state.maxStreaks={};}catch(e){}}lang=state.settings.lang||'en';}
+function loadLocal(){const r=localStorage.getItem('habitState2');if(r){try{const p=JSON.parse(r);state={...state,...p};if(!state.dayNotes)state.dayNotes={};if(!state.maxStreaks)state.maxStreaks={};}catch(e){}}lang=state.settings.lang||'en';recomputeAllMaxStreaks();}
 
 // ── NAV ───────────────────────────────────────────────────────
 function switchPage(name){
@@ -811,6 +811,7 @@ function changePeriod(dir){periodOffset+=dir;hideActionBar();renderJournals();}
 function goToday(){periodOffset=0;focusedDay=null;hideActionBar();renderJournals();}
 
 // ── ACTION BAR ────────────────────────────────────────────────
+let _lastActionHabitId=null; // Track last opened habit for animation control
 function getDateDowStr(dateStr){const d=new Date(dateStr+'T00:00:00');const dows=t('days_week');const idx=(d.getDay()+6)%7;return dows[idx];}
 function showActionBar(habitId,dateStr){
   selectedHabitId=habitId;selectedDate=dateStr;
@@ -820,6 +821,12 @@ function showActionBar(habitId,dateStr){
   // v5.8: перемещаем action-bar inline после карточки нужной привычки
   const bar=document.getElementById('action-bar');
   const card=document.querySelector(`.habit-card[data-id="${habitId}"]`);
+  const sameHabit=(habitId===_lastActionHabitId);
+  _lastActionHabitId=habitId;
+  if(sameHabit&&bar.classList.contains('visible')){
+    // Same habit — just update hint text, no animation needed
+    return;
+  }
   // Сначала сбрасываем visible БЕЗ анимации (мгновенно), потом вставляем и раскрываем
   bar.classList.remove('visible');
   if(card){
@@ -842,7 +849,7 @@ function hideActionBar(){
   if(sync) sync.parentNode?.insertBefore(bar,sync);
   document.querySelectorAll('.month-arrow').forEach(a=>a.style.display='none');
   document.querySelectorAll('.month-selected').forEach(c=>c.classList.remove('month-selected'));
-  selectedHabitId=null;selectedDate=null;
+  selectedHabitId=null;selectedDate=null;_lastActionHabitId=null;
 }
 function applyAction(action){
   if(!selectedHabitId||!selectedDate)return;
@@ -859,10 +866,8 @@ function applyAction(action){
   if(action==='erase') delete state.logs[key];
   else state.logs[key]=action;
 
-  // Recompute and persist max streak from full history (never decreases)
-  const prev=state.maxStreaks[hid]||0;
-  const computed=computeMaxStreak(hid);
-  state.maxStreaks[hid]=Math.max(prev,computed);
+  // Recompute max streak purely from full log history (can go up or down as data changes)
+  state.maxStreaks[hid]=computeMaxStreak(hid);
 
   saveLocal();
   renderJournals();
@@ -872,21 +877,27 @@ function applyAction(action){
 }
 
 // Compute max ever consecutive 'done' streak for a habit from its full log history
+// Logic mirrors current-streak: 'skipped' is neutral (doesn't break or count), 'missed'/empty breaks
 function computeMaxStreak(hid){
-  const keys=Object.keys(state.logs).filter(k=>k.startsWith(hid+'_')&&state.logs[k]==='done');
-  if(!keys.length)return 0;
-  const dates=keys.map(k=>k.slice(hid.length+1)).sort();
-  let best=0,cur=0,prev=null;
-  dates.forEach(ds=>{
-    if(prev){
-      const p=new Date(prev),c=new Date(ds);
-      const diff=(c-p)/(1000*60*60*24);
-      if(diff===1){cur++;}else{cur=1;}
-    }else{cur=1;}
-    if(cur>best)best=cur;
-    prev=ds;
+  // Collect all logged dates for this habit (done + missed + skipped), sort ascending
+  const allKeys=Object.keys(state.logs).filter(k=>k.startsWith(hid+'_'));
+  if(!allKeys.length)return 0;
+  const allDates=allKeys.map(k=>k.slice(hid.length+1)).sort();
+  let best=0,cur=0;
+  // Walk through every date in the log
+  allDates.forEach(ds=>{
+    const v=state.logs[hid+'_'+ds]||'';
+    if(v==='done'){cur++;if(cur>best)best=cur;}
+    else if(v==='skipped'){/* neutral — don't break, don't count */}
+    else{cur=0;} // missed or empty = break
   });
   return best;
+}
+// Recompute maxStreaks for all habits purely from log history
+function recomputeAllMaxStreaks(){
+  state.habits.forEach(h=>{
+    state.maxStreaks[h.id]=computeMaxStreak(h.id);
+  });
 }
 document.addEventListener('click',e=>{
   if(!e.target.closest('#action-bar')&&!e.target.closest('.day-cell')&&!e.target.closest('.month-cell'))hideActionBar();
@@ -1799,8 +1810,8 @@ async function gistDownload(){
     if(data.notes)state.notes=data.notes;
     if(data.dayNotes)state.dayNotes=data.dayNotes;
     if(data.maxStreaks)state.maxStreaks=data.maxStreaks;
+    recomputeAllMaxStreaks();
     saveLocal();renderJournals();
-    showGistStatus('✅ Данные загружены из Gist','ok');
   }catch(e){showGistStatus(_gistErrMsg(e),'err');}
 }
 async function gistCreate(){
@@ -1870,13 +1881,13 @@ async function init(){
       if(data.notes)state.notes=data.notes;
       if(data.dayNotes)state.dayNotes=data.dayNotes;
       if(data.maxStreaks)state.maxStreaks=data.maxStreaks;
+      recomputeAllMaxStreaks();
       saveLocal();renderJournals();
       setSyncIndicator(t('synced'),false);
     }catch(e){setSyncIndicator(t('sync_err'),false);}
     setTimeout(()=>setSyncIndicator('',false),3000);
   }
 }
-init();
-</script>
+init();</script>
 </body>
 </html>
