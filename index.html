@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#323235">
 <meta name="msapplication-navbutton-color" content="#323235">
-<title>Habit Tracker v5.9</title>
+<title>Habit Tracker v6</title>
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%231a1a1c'/%3E%3Ccircle cx='90' cy='90' r='62' fill='%2328a745'/%3E%3Cpolyline points='54,92 78,116 126,64' fill='none' stroke='white' stroke-width='13' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -270,7 +270,17 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .stat-num.red{color:var(--red);}
 .stat-num.accent{color:var(--accent);}
 
-/* SETUP */
+/* ── RED STRIKES (missed streaks) ── */
+.miss-badge{display:flex;align-items:center;background:rgba(255,75,75,.15);border:1px solid rgba(255,75,75,.3);border-radius:20px;padding:3px 9px;min-width:46px;justify-content:center;flex-shrink:0;gap:4px;}
+.miss-badge-icon{font-size:13px;line-height:1;}
+.miss-badge-num{font-size:13px;font-weight:700;color:var(--red);}
+.missed-strikes-section{padding:0 14px 14px;}
+.missed-strikes-title{font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:12px 0 8px;}
+.miss-habit-row{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:var(--card);border-radius:12px;margin-bottom:6px;}
+.miss-habit-name{font-size:15px;color:var(--text);flex:1;}
+.miss-streak-pill{display:flex;align-items:center;gap:5px;background:rgba(255,75,75,.12);border:1px solid rgba(255,75,75,.25);border-radius:20px;padding:4px 11px;}
+.miss-streak-pill span{font-size:13px;font-weight:700;color:var(--red);}
+.day-cell.missed-streak-day::before,.month-cell.missed-streak-day::before{content:'';position:absolute;inset:0;border:2px solid rgba(255,75,75,.55);border-radius:2px;pointer-events:none;z-index:3;}
 .setup-section{padding:16px;}
 .setup-group{background:var(--card);border-radius:16px;overflow:hidden;margin-bottom:14px;}
 .setup-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:.5px solid var(--border);cursor:pointer;}
@@ -321,17 +331,37 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .ah-tab-btn{flex:1;padding:10px;border-radius:12px;border:none;background:var(--card2);color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;}
 .ah-tab-btn.active{background:var(--accent);color:#000;}
 .reorder-list{display:flex;flex-direction:column;gap:8px;}
-.reorder-item{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:12px;padding:12px 14px;cursor:grab;transition:box-shadow .2s,opacity .2s;}
-.reorder-item.dragging{opacity:.45;box-shadow:0 8px 32px rgba(0,0,0,.5);}
-.reorder-item.drag-over{box-shadow:0 0 0 2px var(--accent);}
-.reorder-drag-handle{font-size:18px;color:var(--text3);cursor:grab;flex-shrink:0;touch-action:none;}
-.reorder-name{flex:1;font-size:15px;font-weight:500;color:var(--text);}
-.reorder-archived-badge{font-size:10px;background:var(--card2);color:var(--text3);padding:2px 8px;border-radius:8px;flex-shrink:0;}
-.reorder-arrows{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
-.reorder-arrow-btn{width:28px;height:22px;border:none;background:var(--card2);color:var(--text2);border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;line-height:1;}
-.reorder-arrow-btn:active{background:var(--accent);color:#000;}
-.reorder-arrow-btn:disabled{opacity:.25;cursor:default;}
-.reorder-save-row{margin-top:12px;}
+.reorder-item{
+  display:flex;align-items:center;gap:12px;
+  background:var(--card);border-radius:14px;
+  padding:14px 16px;
+  cursor:grab;
+  box-shadow:0 2px 8px rgba(0,0,0,.18);
+  transition:box-shadow .22s ease,opacity .22s ease,transform .18s ease;
+  border:1px solid rgba(255,255,255,.04);
+  margin-bottom:0;
+}
+.reorder-item:hover{box-shadow:0 6px 20px rgba(0,0,0,.32);}
+.reorder-item.dragging{opacity:.45;transform:scale(1.02);box-shadow:0 12px 36px rgba(0,0,0,.55);cursor:grabbing;}
+.reorder-item.drag-over{box-shadow:0 0 0 2px var(--accent),0 6px 20px rgba(245,166,35,.15);}
+.reorder-drag-handle{
+  font-size:20px;color:var(--text3);cursor:grab;flex-shrink:0;touch-action:none;
+  opacity:.55;transition:opacity .15s;line-height:1;user-select:none;
+}
+.reorder-item:hover .reorder-drag-handle{opacity:1;}
+.reorder-name{flex:1;font-size:15px;font-weight:500;color:var(--text);line-height:1.3;}
+.reorder-archived-badge{font-size:10px;background:rgba(255,255,255,.08);color:var(--text3);padding:3px 8px;border-radius:20px;flex-shrink:0;border:1px solid rgba(255,255,255,.08);}
+.reorder-arrows{display:flex;flex-direction:column;gap:3px;flex-shrink:0;}
+.reorder-arrow-btn{
+  width:30px;height:26px;border:none;
+  background:var(--card2);color:var(--text2);
+  border-radius:8px;cursor:pointer;font-size:12px;
+  display:flex;align-items:center;justify-content:center;line-height:1;
+  transition:background .15s,color .15s,transform .1s;
+}
+.reorder-arrow-btn:active{background:var(--accent);color:#000;transform:scale(.9);}
+.reorder-arrow-btn:disabled{opacity:.2;cursor:default;}
+.reorder-save-row{margin-top:14px;}
 
 /* ── ЗАДАЧА 2: Кнопка "В архив" в модале редактирования ── */
 .btn-archive{background:#4A5568;color:#fff;margin-top:8px;}
@@ -471,7 +501,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
       </button>
     </div>
     <!-- placeholder to keep share on left -->
-    <div style="width:36px"></div>
+    <div style="width:36px;font-size:10px;color:var(--text3);text-align:right;line-height:1.2">v6</div>
   </div>
 
   <!-- Scrollable body -->
@@ -523,6 +553,9 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 
     <!-- Habit list (inline, not separate scroll) -->
     <div style="border-top:.5px solid var(--border);margin-top:4px" id="trend-habit-list"></div>
+
+    <!-- Missed strikes section -->
+    <div class="missed-strikes-section" id="missed-strikes-section"></div>
   </div>
 </div>
 
@@ -567,7 +600,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
         <div class="setup-row" onclick="importData()"><span>📥 Импорт</span><span style="color:var(--text3)">›</span></div>
         <div class="setup-row" onclick="clearAllData()"><span style="color:var(--red)">🗑 Очистить все данные</span><span style="color:var(--text3)">›</span></div>
       </div>
-      <div style="padding:16px;text-align:center"><p style="font-size:12px;color:var(--text3)">Habit Tracker v5.9</p></div>
+      <div style="padding:16px;text-align:center"><p style="font-size:12px;color:var(--text3)">Трекер привычек v6</p></div>
     </div>
   </div>
 </div>
@@ -893,7 +926,25 @@ function computeMaxStreak(hid){
   });
   return best;
 }
-// Recompute maxStreaks for all habits purely from log history
+// Compute current consecutive missed streak (days in a row with 'missed', going back from today)
+// 'skipped' is neutral, 'done' or empty resets to 0
+function computeMissedStreak(hid){
+  const todayStr=todayKey();
+  const todayVal=state.logs[hid+'_'+todayStr]||'';
+  // Start from today if missed, otherwise from yesterday
+  const startOffset=todayVal==='missed'?0:1;
+  const chk=new Date();chk.setDate(chk.getDate()-startOffset);
+  let count=0;
+  for(let i=0;i<366;i++){
+    const v=state.logs[hid+'_'+dateKey(chk)]||'';
+    if(v==='missed'){count++;}
+    else if(v==='skipped'){/* neutral */}
+    else{break;}
+    chk.setDate(chk.getDate()-1);
+  }
+  return count;
+}
+
 function recomputeAllMaxStreaks(){
   state.habits.forEach(h=>{
     state.maxStreaks[h.id]=computeMaxStreak(h.id);
@@ -1027,12 +1078,16 @@ function renderHabits(days,mode){
       else{break;}
       chk.setDate(chk.getDate()-1);
     }
-    const bc=streakCount>0?'green':'';
-    const counter=streakCount;
     // Max streak: always from persisted value — never decreases
     const maxStreak=state.maxStreaks[habit.id]||0;
     const maxBadgeHtml=`<div class="max-streak-badge"><span class="max-streak-icon">🏆</span><span class="max-streak-num">${maxStreak}</span></div>`;
-    card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${habit.name}</div>${habit.tag||habit.goal?`<div class="habit-sub">${[habit.tag,habit.goal].filter(Boolean).join(' · ')}</div>`:''}</div><div class="streak-wrap"><div class="streak-badge ${bc}"><span class="streak-num">${counter}</span></div>${maxBadgeHtml}</div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div><div class="month-arrow-wrap" id="arrow-wrap-${habit.id}"><div class="month-arrow" id="arrow-${habit.id}" style="display:none"></div></div>`;
+    // Single smart badge: green if active streak, red if missed streak, grey if both 0
+    const missedStreak=computeMissedStreak(habit.id);
+    let bc='', badgeNum=0;
+    if(streakCount>0){bc='green';badgeNum=streakCount;}
+    else if(missedStreak>0){bc='red';badgeNum=missedStreak;}
+    else{bc='';badgeNum=0;}
+    card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${habit.name}</div>${habit.tag||habit.goal?`<div class="habit-sub">${[habit.tag,habit.goal].filter(Boolean).join(' · ')}</div>`:''}</div><div class="streak-wrap"><div class="streak-badge ${bc}"><span class="streak-num">${badgeNum}</span></div>${maxBadgeHtml}</div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div><div class="month-arrow-wrap" id="arrow-wrap-${habit.id}"><div class="month-arrow" id="arrow-${habit.id}" style="display:none"></div></div>`;
     let pressTimer=null;
     card.addEventListener('touchstart',e=>{pressTimer=setTimeout(()=>showContextMenu(e,habit.id),600);},{passive:true});
     card.addEventListener('touchend',()=>clearTimeout(pressTimer));
@@ -1256,9 +1311,25 @@ function renderTrend(){
   function logsFor(hid){const r={};Object.entries(state.logs).forEach(([k,v])=>{const ds=k.split('_').slice(1).join('_');if(hid!=='all'&&!k.startsWith(hid+'_'))return;if(ds>=psk)r[k]=v;});return r;}
   const logs=logsFor(trendHabitId);
   let td=0,tm=0,ts=0;Object.values(logs).forEach(v=>{if(v==='done')td++;else if(v==='missed')tm++;else if(v==='skipped')ts++;});
-  const tot=td+tm+ts,pct=tot>0?Math.round(td/tot*100):0;
+  // Success = done / (done + missed) * 100 — matches Journal logic (skipped days don't count as failure)
+  const doneAndMissed=td+tm;
+  const pct=doneAndMissed>0?Math.round(td/doneAndMissed*100):0;
+  // Streak = consecutive 'done' days going back from today (skipped = neutral, missed/empty = break)
+  // Mirrors exact logic from renderHabits in Journal
   let bestStr=0;
-  if(trendHabitId!=='all'){let cur=0;Object.keys(logs).map(k=>k.split('_').slice(1).join('_')).filter(ds=>ds>=psk).sort().forEach(ds=>{if(state.logs[trendHabitId+'_'+ds]==='done'){cur++;bestStr=Math.max(bestStr,cur);}else cur=0;});}
+  if(trendHabitId!=='all'){
+    const todayStr=todayKey();
+    const todayVal=state.logs[trendHabitId+'_'+todayStr]||'';
+    const startOffset=todayVal===''?1:0;
+    const chk=new Date();chk.setDate(chk.getDate()-startOffset);
+    for(let i=0;i<366;i++){
+      const v=state.logs[trendHabitId+'_'+dateKey(chk)]||'';
+      if(v==='done'){bestStr++;}
+      else if(v==='skipped'){/* neutral */}
+      else{break;}
+      chk.setDate(chk.getDate()-1);
+    }
+  }
 
   document.getElementById('tr-habit-title').textContent=selH?selH.name:t('summarize_all');
   const loc=lang==='en'?'en-GB':'ru-RU';
@@ -1306,7 +1377,8 @@ function renderTrend(){
   document.getElementById('tr-flt-row').style.display='flex';
 
   if(trendChartType==='pie'){
-    const ne=ts>0?ts:(tot===0?1:0);
+    const tot2=td+tm+ts;
+    const ne=ts>0?ts:(tot2===0?1:0);
     mainTrendChart=new Chart(ctx,{type:'pie',data:{
       labels:[t('completed')+' ('+td+')',t('missed')+' ('+tm+')','Neutral ('+ne+')'],
       datasets:[{data:[td,tm,ne],backgroundColor:['#34c759','#ff3b30','#3a3a3c'],borderWidth:0}]
@@ -1361,6 +1433,21 @@ function renderTrend(){
     row.innerHTML=`<div class="th-dot${hd>0?' g':''}"></div><span class="th-name">${h.name}</span>`;
     row.onclick=()=>{trendHabitId=h.id;renderTrend();};list.appendChild(row);
   });
+
+  // Missed strikes section — top habits by current missed streak
+  const missSection=document.getElementById('missed-strikes-section');
+  if(missSection){
+    const habitsWithMiss=state.habits.filter(h=>!h.archived).map(h=>({h,ms:computeMissedStreak(h.id)})).filter(x=>x.ms>0).sort((a,b)=>b.ms-a.ms);
+    if(habitsWithMiss.length){
+      let html=`<div class="missed-strikes-title">🔴 Текущие серии пропусков</div>`;
+      habitsWithMiss.forEach(({h,ms})=>{
+        html+=`<div class="miss-habit-row"><span class="miss-habit-name">${h.name}</span><div class="miss-streak-pill"><span>🔴 ${ms} ${ms===1?'день':(ms<5?'дня':'дней')}</span></div></div>`;
+      });
+      missSection.innerHTML=html;
+    } else {
+      missSection.innerHTML='';
+    }
+  }
 }
 
 // ── DAY NOTES ─────────────────────────────────────────────────
