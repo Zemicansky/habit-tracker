@@ -4,11 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#323235">
-<meta name="msapplication-navbutton-color" content="#323235">
-<title>Habit Tracker v6.1</title>
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%231a1a1c'/%3E%3Ccircle cx='90' cy='90' r='62' fill='%2328a745'/%3E%3Cpolyline points='54,92 78,116 126,64' fill='none' stroke='white' stroke-width='13' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Habits">
+<meta name="theme-color" content="#000000">
+<meta name="msapplication-navbutton-color" content="#000000">
+<title>Habit Tracker v6.2</title>
+<script>
+(function(){
+  try{
+    var c=document.createElement('canvas');c.width=180;c.height=180;
+    var ctx=c.getContext('2d');
+    // Black background with rounded corners
+    var r=38;ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(180-r,0);ctx.quadraticCurveTo(180,0,180,r);ctx.lineTo(180,180-r);ctx.quadraticCurveTo(180,180,180-r,180);ctx.lineTo(r,180);ctx.quadraticCurveTo(0,180,0,180-r);ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0);ctx.closePath();
+    ctx.fillStyle='#000000';ctx.fill();
+    // White elegant checkmark
+    ctx.beginPath();ctx.moveTo(42,92);ctx.lineTo(74,124);ctx.lineTo(138,56);
+    ctx.strokeStyle='#ffffff';ctx.lineWidth=16;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+    var link=document.createElement('link');link.rel='apple-touch-icon';link.href=c.toDataURL('image/png');
+    document.head.appendChild(link);
+  }catch(e){}
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
@@ -407,7 +423,10 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
       </button>
       <button class="icon-btn" onclick="changePeriod(1)" style="font-size:18px;width:30px;height:30px">›</button>
     </div>
-    <button class="icon-btn" onclick="openAddHabit()">+</button>
+    <div style="display:flex;align-items:center;gap:4px">
+      <span id="offline-badge" style="display:none;font-size:11px;font-weight:600;color:#ff9f0a;background:rgba(255,159,10,.15);border-radius:8px;padding:3px 8px;letter-spacing:.2px">Оффлайн</span>
+      <button class="icon-btn" onclick="openAddHabit()">+</button>
+    </div>
   </div>
 
   <!-- DROPDOWN -->
@@ -460,19 +479,19 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
     <div class="action-bar" id="action-bar">
       <div class="action-bar-hint" id="action-bar-hint">Выберите действие</div>
       <div class="action-btns">
-        <button class="action-btn ab-erase" onclick="applyAction('erase')">
+        <button class="action-btn ab-erase" onclick="applyActionDebounced('erase')">
           <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
           <span class="ab-label" data-i18n="btn_erase">Стереть</span>
         </button>
-        <button class="action-btn ab-yes" onclick="applyAction('done')">
+        <button class="action-btn ab-yes" onclick="applyActionDebounced('done')">
           <div class="ab-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           <span class="ab-label" data-i18n="btn_yes">Да</span>
         </button>
-        <button class="action-btn ab-no" onclick="applyAction('missed')">
+        <button class="action-btn ab-no" onclick="applyActionDebounced('missed')">
           <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
           <span class="ab-label" data-i18n="btn_no">Нет</span>
         </button>
-        <button class="action-btn ab-skip" onclick="applyAction('skipped')">
+        <button class="action-btn ab-skip" onclick="applyActionDebounced('skipped')">
           <div class="ab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></div>
           <span class="ab-label" data-i18n="btn_skip">Пропуск</span>
         </button>
@@ -503,7 +522,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
       </button>
     </div>
     <!-- placeholder to keep share on left -->
-    <div style="width:36px;font-size:10px;color:var(--text3);text-align:right;line-height:1.2">v6.1</div>
+    <div style="width:36px;font-size:10px;color:var(--text3);text-align:right;line-height:1.2">v6.2</div>
   </div>
 
   <!-- Scrollable body -->
@@ -577,6 +596,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
     <div class="setup-section">
       <div class="setup-group">
         <div class="setup-row" onclick="toggleSetting('sound')"><span>🔊 Звуковые эффекты</span><div class="toggle" id="toggle-sound"></div></div>
+        <div class="setup-row" onclick="toggleSetting('vibration')"><span>📳 Вибрация</span><div class="toggle" id="toggle-vibration"></div></div>
         <div class="setup-row" onclick="toggleSetting('chains')"><span>⛓ Цепочки (стрики)</span><div class="toggle" id="toggle-chains"></div></div>
       </div>
       <div class="setup-group">
@@ -602,7 +622,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
         <div class="setup-row" onclick="importData()"><span>📥 Импорт</span><span style="color:var(--text3)">›</span></div>
         <div class="setup-row" onclick="clearAllData()"><span style="color:var(--red)">🗑 Очистить все данные</span><span style="color:var(--text3)">›</span></div>
       </div>
-      <div style="padding:16px;text-align:center"><p style="font-size:12px;color:var(--text3)">Habit Tracker v6.1</p></div>
+      <div style="padding:16px;text-align:center"><p style="font-size:12px;color:var(--text3)">Habit Tracker v6.2</p></div>
     </div>
   </div>
 </div>
@@ -793,7 +813,7 @@ const I18N={
 function t(k){ return (I18N[lang]||I18N.ru)[k]||k; }
 
 // ── STATE ─────────────────────────────────────────────────────
-let state={habits:[],logs:{},notes:[],dayNotes:{},maxStreaks:{},settings:{sound:true,chains:true,gistId:'',ghToken:'',lang:'en'}};
+let state={habits:[],logs:{},notes:[],dayNotes:{},maxStreaks:{},settings:{sound:true,chains:true,vibration:true,gistId:'',ghToken:'',lang:'en'}};
 let lang='en',viewMode='week',periodOffset=0;
 let selectedDate=null,selectedHabitId=null,editingHabitId=null;
 let selectedTag='',ctxHabitId=null,currentFilter='all';
@@ -886,8 +906,19 @@ function hideActionBar(){
   document.querySelectorAll('.month-selected').forEach(c=>c.classList.remove('month-selected'));
   selectedHabitId=null;selectedDate=null;_lastActionHabitId=null;
 }
+// ── DEBOUNCE / SAVE GUARD ─────────────────────────────────────
+let _isSaving=false;
+let _actionDebounceTimer=null;
+function applyActionDebounced(action){
+  if(_isSaving)return;
+  clearTimeout(_actionDebounceTimer);
+  _actionDebounceTimer=setTimeout(()=>applyAction(action),300);
+}
+
 function applyAction(action){
   if(!selectedHabitId||!selectedDate)return;
+  if(_isSaving)return;
+  _isSaving=true;
 
   const hid=selectedHabitId;
   const date=selectedDate;
@@ -905,10 +936,57 @@ function applyAction(action){
   state.maxStreaks[hid]=computeMaxStreak(hid);
 
   saveLocal();
-  renderJournals();
+  _isSaving=false;
+
+  // Update only the affected cell(s) without full re-render to prevent freezes on rapid clicks
+  _updateHabitCellsOnly(hid);
   syncToGistDebounced();
 
   if(action==='done'&&state.settings.sound) playTick();
+  if(action==='done'&&state.settings.vibration!==false&&navigator.vibrate) navigator.vibrate(40);
+}
+
+// Lightweight cell-only update: re-render just this habit's grid row and streak badge
+function _updateHabitCellsOnly(hid){
+  const card=document.querySelector(`.habit-card[data-id="${hid}"]`);
+  if(!card){renderJournals();return;}
+  // Update streak badge
+  let streakCount=0;
+  const todayStr=todayKey();
+  const todayVal=state.logs[hid+'_'+todayStr]||'';
+  const startOffset=todayVal===''?1:0;
+  const chk=new Date();chk.setDate(chk.getDate()-startOffset);
+  for(let i=0;i<366;i++){
+    const v=state.logs[hid+'_'+dateKey(chk)]||'';
+    if(v==='done'){streakCount++;}
+    else if(v==='skipped'){}
+    else{break;}
+    chk.setDate(chk.getDate()-1);
+  }
+  const maxStreak=state.maxStreaks[hid]||0;
+  const missedStreak=computeMissedStreak(hid);
+  let bc='',badgeNum=0;
+  if(streakCount>0){bc='green';badgeNum=streakCount;}
+  else if(missedStreak>0){bc='red';badgeNum=missedStreak;}
+  const sb=card.querySelector('.streak-badge');
+  if(sb){sb.className='streak-badge'+(bc?' '+bc:'');const sn=sb.querySelector('.streak-num');if(sn)sn.textContent=badgeNum;}
+  const msb=card.querySelector('.max-streak-num');if(msb)msb.textContent=maxStreak;
+  // Update all cells in this habit's grid
+  const grid=card.querySelector('[id^="grid-"]');
+  if(grid){
+    grid.querySelectorAll('.day-cell,.month-cell').forEach(cell=>{
+      const dk=cell.dataset.date;
+      if(!dk)return;
+      const val=state.logs[hid+'_'+dk]||'';
+      cell.classList.remove('done','missed','skipped');
+      if(val==='done')cell.classList.add('done');
+      else if(val==='missed')cell.classList.add('missed');
+      else if(val==='skipped')cell.classList.add('skipped');
+      // Update has-note indicator
+      cell.classList.toggle('has-note',!!state.dayNotes[dayNoteKey(hid,dk)]);
+    });
+  }
+  updateTodayCounter();
 }
 
 // Compute max ever consecutive 'done' streak for a habit from its full log history
@@ -1098,6 +1176,7 @@ function renderHabits(days,mode){
     const grid=document.getElementById('grid-'+habit.id),cc=mode==='week'?'day-cell':'month-cell';
     days.forEach((d,ci)=>{
       const cell=document.createElement('div');cell.className=cc;
+      cell.dataset.date=dateKey(d);
       const val=state.logs[habit.id+'_'+dateKey(d)]||'';
       if(val==='done')cell.classList.add('done');else if(val==='missed')cell.classList.add('missed');else if(val==='skipped')cell.classList.add('skipped');
       if(isToday(d)&&periodOffset===0)cell.classList.add('today');
@@ -1772,6 +1851,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('#context-menu'))clos
 // ── SETUP ─────────────────────────────────────────────────────
 function renderSetup(){
   document.getElementById('toggle-sound').className='toggle'+(state.settings.sound?' on':'');
+  document.getElementById('toggle-vibration').className='toggle'+(state.settings.vibration!==false?' on':'');
   document.getElementById('toggle-chains').className='toggle'+(state.settings.chains?' on':'');
   // Load credentials from dedicated storage (never from state.settings)
   const creds=_loadCredentials();
@@ -1954,9 +2034,18 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 function playTick(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;g.gain.setValueAtTime(0.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.15);o.start();o.stop(ctx.currentTime+0.15);}catch(e){}}
 
 
+// ── OFFLINE INDICATOR ─────────────────────────────────────────
+function _updateOfflineBadge(){
+  const badge=document.getElementById('offline-badge');
+  if(!badge)return;
+  badge.style.display=navigator.onLine?'none':'inline-block';
+}
+window.addEventListener('online',_updateOfflineBadge);
+window.addEventListener('offline',_updateOfflineBadge);
+
 // ── INIT ──────────────────────────────────────────────────────
 async function init(){
-  loadLocal();renderJournals();updateTranslations();
+  loadLocal();renderJournals();updateTranslations();_updateOfflineBadge();
   document.getElementById('lang-check-ru').style.display=lang==='ru'?'':'none';
   document.getElementById('lang-check-en').style.display=lang==='en'?'':'none';
   const{token,gistId}=_loadCredentials();
