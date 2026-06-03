@@ -591,13 +591,13 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 
 <!-- PAGE: SETUP -->
 <div class="page" id="page-setup">
-  <div class="top-bar"><h1 style="font-size:17px;font-weight:600;color:var(--accent)">Настройки</h1></div>
+  <div class="top-bar"><h1 style="font-size:17px;font-weight:600;color:var(--accent)" id="settings-page-title">Настройки</h1></div>
   <div class="scroll-area">
     <div class="setup-section">
       <div class="setup-group">
-        <div class="setup-row" onclick="toggleSetting('sound')"><span>🔊 Звуковые эффекты</span><div class="toggle" id="toggle-sound"></div></div>
-        <div class="setup-row" onclick="toggleSetting('vibration')"><span>📳 Вибрация</span><div class="toggle" id="toggle-vibration"></div></div>
-        <div class="setup-row" onclick="toggleSetting('chains')"><span>⛓ Цепочки (стрики)</span><div class="toggle" id="toggle-chains"></div></div>
+        <div class="setup-row" onclick="toggleSetting('sound')"><span id="lbl-setting-sound">🔊 Звуковые эффекты</span><div class="toggle" id="toggle-sound"></div></div>
+        <div class="setup-row" onclick="toggleSetting('vibration')"><span id="lbl-setting-vibration">📳 Вибрация</span><div class="toggle" id="toggle-vibration"></div></div>
+        <div class="setup-row" onclick="toggleSetting('chains')"><span id="lbl-setting-chains">⛓ Цепочки (стрики)</span><div class="toggle" id="toggle-chains"></div></div>
       </div>
       <div class="setup-group">
         <div style="padding:12px 16px;font-size:12px;color:var(--text3);text-transform:uppercase;font-weight:600;letter-spacing:.5px">🌍 Язык / Language</div>
@@ -606,21 +606,21 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
       </div>
       <div class="setup-group">
         <div style="padding:14px 16px">
-          <div style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:12px">☁️ GitHub Gist — Синхронизация</div>
-          <div class="form-group"><label>GitHub Token</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off"></div>
-          <div class="form-group"><label>Gist ID</label><input type="text" id="gh-gist-id" placeholder="оставьте пустым для создания нового"></div>
+          <div id="gist-section-title" style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:12px">☁️ GitHub Gist — Синхронизация</div>
+          <div class="form-group"><label id="gist-token-label">GitHub Token</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off"></div>
+          <div class="form-group"><label id="gist-id-label">Gist ID</label><input type="text" id="gh-gist-id" placeholder="оставьте пустым для создания нового" id="gist-id-input"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-            <button class="btn btn-primary" onclick="gistUpload()" style="font-size:13px;padding:10px 6px">📤 Выгрузить</button>
-            <button class="btn btn-ghost"   onclick="gistDownload()" style="font-size:13px;padding:10px 6px">📥 Загрузить</button>
+            <button class="btn btn-primary" id="gist-upload-btn" onclick="gistUpload()" style="font-size:13px;padding:10px 6px">📤 Выгрузить</button>
+            <button class="btn btn-ghost"   id="gist-download-btn" onclick="gistDownload()" style="font-size:13px;padding:10px 6px">📥 Загрузить</button>
           </div>
-          <button class="btn btn-ghost" onclick="gistCreate()" style="margin-bottom:8px;font-size:13px">✨ Создать новый Gist</button>
+          <button class="btn btn-ghost" id="gist-create-btn" onclick="gistCreate()" style="margin-bottom:8px;font-size:13px">✨ Создать новый Gist</button>
           <div class="gist-status" id="gist-status"></div>
         </div>
       </div>
       <div class="setup-group">
-        <div class="setup-row" onclick="exportData()"><span>📤 Экспорт (JSON)</span><span style="color:var(--text3)">›</span></div>
-        <div class="setup-row" onclick="importData()"><span>📥 Импорт</span><span style="color:var(--text3)">›</span></div>
-        <div class="setup-row" onclick="clearAllData()"><span style="color:var(--red)">🗑 Очистить все данные</span><span style="color:var(--text3)">›</span></div>
+        <div class="setup-row" onclick="exportData()"><span id="lbl-export">📤 Экспорт (JSON)</span><span style="color:var(--text3)">›</span></div>
+        <div class="setup-row" onclick="importData()"><span id="lbl-import">📥 Импорт</span><span style="color:var(--text3)">›</span></div>
+        <div class="setup-row" onclick="clearAllData()"><span id="lbl-clear" style="color:var(--red)">🗑 Очистить все данные</span><span style="color:var(--text3)">›</span></div>
       </div>
       <div style="padding:16px;text-align:center"><p style="font-size:12px;color:var(--text3)">Habit Tracker v6.2</p></div>
     </div>
@@ -762,7 +762,7 @@ const I18N={
        filter_all:'Все', filter_sport:'Спорт',
        gist_save:'💾 Сохранить и подключить', gist_sync:'🔄 Синхронизировать',
        dd_calendar:'Календарь', dd_week:'Неделя', dd_month:'Месяц', dd_today:'Сегодня',
-       setting_sound:'🔊 Звуковые эффекты', setting_chains:'⛓ Цепочки (стрики)',
+       setting_sound:'🔊 Звуковые эффекты', setting_vibration:'📳 Вибрация', setting_chains:'⛓ Цепочки (стрики)',
        export_data:'📤 Экспорт (JSON)', import_data:'📥 Импорт', clear_data:'🗑 Очистить все данные',
        success_pct:'Успех', streak_label:'Стрик', summarize_all:'Summarize All',
        yesterday:'Вчера', tomorrow:'Завтра', today_lbl:'Сегодня',
@@ -772,7 +772,11 @@ const I18N={
        confirm_delete_habit:'Удалить привычку?', confirm_delete_note:'Удалить заметку?',
        confirm_delete_all:'Удалить ВСЕ данные?', confirm_delete_habit_ctx:'Удалить эту привычку?',
        imported_ok:'Импортировано!', wrong_format:'Неверный формат',
-       add_habit_btn:'Добавить привычку', habits_lbl:'Привычки' },
+       add_habit_btn:'Добавить привычку', habits_lbl:'Привычки',
+       gist_section_title:'☁️ GitHub Gist — Синхронизация', gist_token_label:'GitHub Token',
+       gist_id_label:'Gist ID', gist_id_placeholder:'оставьте пустым для создания нового',
+       gist_upload:'📤 Выгрузить', gist_download:'📥 Загрузить', gist_create:'✨ Создать новый Gist',
+       page_settings_title:'Настройки', offline_badge:'Оффлайн' },
   en:{ months_short:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
        days_short:['Su','Mo','Tu','We','Th','Fr','Sa'], days_week:['Mo','Tu','We','Th','Fr','Sa','Su'],
        this_week:'This Week', last_week:'Last Week', this_month:'This Month',
@@ -798,7 +802,7 @@ const I18N={
        filter_all:'All', filter_sport:'Sport',
        gist_save:'💾 Save & connect', gist_sync:'🔄 Sync',
        dd_calendar:'Calendar', dd_week:'Week', dd_month:'Month', dd_today:'Today',
-       setting_sound:'🔊 Sound effects', setting_chains:'⛓ Chains (streaks)',
+       setting_sound:'🔊 Sound effects', setting_vibration:'📳 Vibration', setting_chains:'⛓ Chains (streaks)',
        export_data:'📤 Export (JSON)', import_data:'📥 Import', clear_data:'🗑 Clear all data',
        success_pct:'Success', streak_label:'Streak', summarize_all:'Summarize All',
        yesterday:'Yesterday', tomorrow:'Tomorrow', today_lbl:'Today',
@@ -808,7 +812,11 @@ const I18N={
        confirm_delete_habit:'Delete habit?', confirm_delete_note:'Delete note?',
        confirm_delete_all:'Delete ALL data?', confirm_delete_habit_ctx:'Delete this habit?',
        imported_ok:'Imported!', wrong_format:'Invalid format',
-       add_habit_btn:'Add Habit', habits_lbl:'Habits' }
+       add_habit_btn:'Add Habit', habits_lbl:'Habits',
+       gist_section_title:'☁️ GitHub Gist — Sync', gist_token_label:'GitHub Token',
+       gist_id_label:'Gist ID', gist_id_placeholder:'leave empty to create new',
+       gist_upload:'📤 Upload', gist_download:'📥 Download', gist_create:'✨ Create new Gist',
+       page_settings_title:'Settings', offline_badge:'Offline' }
 };
 function t(k){ return (I18N[lang]||I18N.ru)[k]||k; }
 
@@ -1312,18 +1320,25 @@ function updateTranslations(){
   if(ctxItems[1])ctxItems[1].textContent=t('ctx_archive');
   if(ctxItems[2])ctxItems[2].textContent=t('ctx_delete');
   if(ctxItems[3])ctxItems[3].textContent=t('ctx_cancel');
-  // Setup page rows
-  const setupRows=document.querySelectorAll('.setup-row span:first-child');
-  if(setupRows[0])setupRows[0].textContent=t('setting_sound');
-  if(setupRows[1])setupRows[1].textContent=t('setting_chains');
-  if(setupRows[2])setupRows[2].innerHTML=t('export_data');
-  if(setupRows[3])setupRows[3].innerHTML=t('import_data');
-  if(setupRows[4])setupRows[4].innerHTML='<span style="color:var(--red)">'+t('clear_data')+'</span>';
-  // Gist buttons — 3 buttons now: upload, download, create
-  const gistBtns=document.querySelectorAll('#page-setup .setup-group .btn');
-  if(gistBtns[0])gistBtns[0].textContent=lang==='en'?'📤 Upload':'📤 Выгрузить';
-  if(gistBtns[1])gistBtns[1].textContent=lang==='en'?'📥 Download':'📥 Загрузить';
-  if(gistBtns[2])gistBtns[2].textContent=lang==='en'?'✨ Create new Gist':'✨ Создать новый Gist';
+  // Setup page — settings title
+  const spt=document.getElementById('settings-page-title');if(spt)spt.textContent=t('page_settings_title');
+  // Setup page rows — by ID (not fragile index)
+  const ls=document.getElementById('lbl-setting-sound');if(ls)ls.textContent=t('setting_sound');
+  const lv=document.getElementById('lbl-setting-vibration');if(lv)lv.textContent=t('setting_vibration');
+  const lc=document.getElementById('lbl-setting-chains');if(lc)lc.textContent=t('setting_chains');
+  const le=document.getElementById('lbl-export');if(le)le.textContent=t('export_data');
+  const li=document.getElementById('lbl-import');if(li)li.textContent=t('import_data');
+  const lcl=document.getElementById('lbl-clear');if(lcl){lcl.textContent=t('clear_data');lcl.style.color='var(--red)';}
+  // Gist section
+  const gst=document.getElementById('gist-section-title');if(gst)gst.textContent=t('gist_section_title');
+  const gtl=document.getElementById('gist-token-label');if(gtl)gtl.textContent=t('gist_token_label');
+  const gil=document.getElementById('gist-id-label');if(gil)gil.textContent=t('gist_id_label');
+  const gip=document.getElementById('gh-gist-id');if(gip)gip.placeholder=t('gist_id_placeholder');
+  const gub=document.getElementById('gist-upload-btn');if(gub)gub.textContent=t('gist_upload');
+  const gdb=document.getElementById('gist-download-btn');if(gdb)gdb.textContent=t('gist_download');
+  const gcb=document.getElementById('gist-create-btn');if(gcb)gcb.textContent=t('gist_create');
+  // Offline badge
+  const ob=document.getElementById('offline-badge');if(ob&&!navigator.onLine)ob.textContent=t('offline_badge');
 }
 
 // ── LANG ──────────────────────────────────────────────────────
@@ -2038,7 +2053,9 @@ function playTick(){try{const ctx=new(window.AudioContext||window.webkitAudioCon
 function _updateOfflineBadge(){
   const badge=document.getElementById('offline-badge');
   if(!badge)return;
-  badge.style.display=navigator.onLine?'none':'inline-block';
+  const isOffline=!navigator.onLine;
+  badge.style.display=isOffline?'inline-block':'none';
+  if(isOffline)badge.textContent=t('offline_badge');
 }
 window.addEventListener('online',_updateOfflineBadge);
 window.addEventListener('offline',_updateOfflineBadge);
