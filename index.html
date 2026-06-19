@@ -975,7 +975,7 @@ function _updateHabitCellsOnly(hid){
   const todayVal=state.logs[hid+'_'+todayStr]||'';
   const startOffset=todayVal===''?1:0;
   const chk=new Date();chk.setDate(chk.getDate()-startOffset);
-  for(let i=0;i<366;i++){
+  for(let i=0;i<999;i++){
     const v=state.logs[hid+'_'+dateKey(chk)]||'';
     if(v==='done'){streakCount++;}
     else if(v==='skipped'){}
@@ -1034,7 +1034,7 @@ function computeMissedStreak(hid){
   const startOffset=todayVal==='missed'?0:1;
   const chk=new Date();chk.setDate(chk.getDate()-startOffset);
   let count=0;
-  for(let i=0;i<366;i++){
+  for(let i=0;i<999;i++){
     const v=state.logs[hid+'_'+dateKey(chk)]||'';
     if(v==='missed'){count++;}
     else if(v==='skipped'){/* neutral */}
@@ -1170,7 +1170,7 @@ function renderHabits(days,mode){
     const todayVal=state.logs[habit.id+'_'+todayStr]||'';
     const startOffset=todayVal===''?1:0; // skip today if unmarked
     const chk=new Date();chk.setDate(chk.getDate()-startOffset);
-    for(let i=0;i<366;i++){
+    for(let i=0;i<999;i++){
       const v=state.logs[habit.id+'_'+dateKey(chk)]||'';
       if(v==='done'){streakCount++;}
       else if(v==='skipped'){/* neutral — skip this day, don't break streak */}
@@ -1430,7 +1430,7 @@ function renderTrend(){
     const todayVal=state.logs[trendHabitId+'_'+todayStr]||'';
     const startOffset=todayVal===''?1:0;
     const chk=new Date();chk.setDate(chk.getDate()-startOffset);
-    for(let i=0;i<366;i++){
+    for(let i=0;i<999;i++){
       const v=state.logs[trendHabitId+'_'+dateKey(chk)]||'';
       if(v==='done'){bestStr++;}
       else if(v==='skipped'){/* neutral */}
