@@ -128,13 +128,13 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
 .habit-card:has(+ .action-bar.visible){border-radius:14px 14px 0 0;}
 .habit-card:active{transform:scale(.985);}
 .habit-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
-.habit-name{font-size:15px;font-weight:600;color:var(--text);flex:1;margin-right:8px;line-height:1.2;}
+.habit-name{font-size:15px;font-weight:600;color:var(--text);flex:1;min-width:0;margin-right:8px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .habit-sub{font-size:10px;color:var(--text3);margin-top:2px;}
-.streak-badge{display:flex;align-items:center;background:var(--card2);border-radius:20px;padding:4px 10px;min-width:46px;justify-content:center;flex-shrink:0;}
+.streak-badge{display:flex;align-items:center;background:var(--card2);border-radius:20px;padding:4px 6px;width:50px;height:28px;justify-content:center;flex-shrink:0;}
 .streak-badge.green{background:var(--green);}
 .streak-badge.red{background:var(--red);}.streak-badge.red .streak-num{color:#fff;}
 .streak-num{font-size:15px;font-weight:700;color:var(--text);}
-.max-streak-badge{display:flex;align-items:center;background:#48484a;border-radius:20px;padding:4px 8px;min-width:46px;justify-content:center;flex-shrink:0;gap:3px;}
+.max-streak-badge{display:flex;align-items:center;background:#48484a;border-radius:20px;padding:4px 6px;width:50px;height:28px;justify-content:center;flex-shrink:0;gap:3px;}
 .max-streak-icon{font-size:12px;line-height:1;}
 .max-streak-num{font-size:13px;font-weight:600;color:#8e8e93;}
 .streak-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0;}
@@ -187,7 +187,7 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
   will-change:max-height,opacity;
 }
 .action-bar.visible{
-  max-height:120px;
+  max-height:138px;
   opacity:1;
   pointer-events:auto;
   padding:5px 12px 10px;
@@ -202,9 +202,9 @@ body{position:fixed;top:0;left:0;right:0;bottom:0;background-color:#323235;min-h
   margin:0 auto 6px;
 }
 .action-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
-.action-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 2px;border-radius:16px;border:none;cursor:pointer;background:none;transition:transform .12s,opacity .12s;color:#fff;}
+.action-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 2px;border-radius:16px;border:none;cursor:pointer;background:none;transition:transform .12s,opacity .12s;color:#fff;}
 .action-btn:active{transform:scale(.9);opacity:.8;}
-.action-btn .ab-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;}
+.action-btn .ab-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:23px;color:#fff;}
 .ab-erase .ab-icon{background:#5C4033;}
 .ab-yes  .ab-icon{background:#2E7D45;}
 .ab-no   .ab-icon{background:#8B3A3A;}
@@ -983,7 +983,7 @@ function _updateHabitCellsOnly(hid){
     chk.setDate(chk.getDate()-1);
   }
   const maxStreak=state.maxStreaks[hid]||0;
-  const missedStreak=computeMissedStreak(hid);
+  const missedStreak=streakCount>0?0:computeMissedStreak(hid);
   let bc='',badgeNum=0;
   if(streakCount>0){bc='green';badgeNum=streakCount;}
   else if(missedStreak>0){bc='red';badgeNum=missedStreak;}
@@ -1181,12 +1181,13 @@ function renderHabits(days,mode){
     const maxStreak=state.maxStreaks[habit.id]||0;
     const maxBadgeHtml=`<div class="max-streak-badge"><span class="max-streak-icon">🔥</span><span class="max-streak-num">${maxStreak}</span></div>`;
     // Single smart badge: green if active streak, red if missed streak, grey if both 0
-    const missedStreak=computeMissedStreak(habit.id);
+    // Only compute missed streak when there's no active done streak — avoids a redundant 366-day loop
+    const missedStreak=streakCount>0?0:computeMissedStreak(habit.id);
     let bc='', badgeNum=0;
     if(streakCount>0){bc='green';badgeNum=streakCount;}
     else if(missedStreak>0){bc='red';badgeNum=missedStreak;}
     else{bc='';badgeNum=0;}
-    card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${escapeHtml(habit.name)}</div>${habit.goal?`<div class="habit-sub">${escapeHtml(habit.goal)}</div>`:''}</div><div class="streak-wrap"><div class="streak-badge ${bc}"><span class="streak-num">${badgeNum}</span></div>${maxBadgeHtml}</div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div><div class="month-arrow-wrap" id="arrow-wrap-${habit.id}"><div class="month-arrow" id="arrow-${habit.id}" style="display:none"></div></div>`;
+    card.innerHTML=`<div class="habit-header"><div><div class="habit-name">${escapeHtml(habit.name)}</div></div><div class="streak-wrap"><div class="streak-badge ${bc}"><span class="streak-num">${badgeNum}</span></div>${maxBadgeHtml}</div></div><div class="${mode==='week'?'day-grid':'month-grid'}" id="grid-${habit.id}"></div><div class="month-arrow-wrap" id="arrow-wrap-${habit.id}"><div class="month-arrow" id="arrow-${habit.id}" style="display:none"></div></div>`;
     let pressTimer=null;
     card.addEventListener('touchstart',e=>{pressTimer=setTimeout(()=>showContextMenu(e,habit.id),600);},{passive:true});
     card.addEventListener('touchend',()=>clearTimeout(pressTimer));
